@@ -133,6 +133,9 @@ let editingProfitId = null;
 let collapsedVehicles = new Set();
 let csvRows = null;
 let csvHeaders = null;
+let expenseCsvRows = null;
+let expenseCsvHeaders = null;
+let expenseCsvPreview = null;
 
 const EXPENSE_CATEGORIES = ['fuel','cleaning','tolls','parking','insurance','maintenance','other'];
 
@@ -399,6 +402,115 @@ function csvToMonthlySummary(headers, rows){
     groups[key].count += 1;
   }
   return Object.values(groups).sort((a,b)=>b.month.localeCompare(a.month));
+}
+
+/* ---- Expense CSV import (bank / credit card statements) ----
+   Generic parser: looks for a date column, a description/merchant column,
+   and an amount (either a single "Amount" column, or separate Debit/Credit
+   columns like many bank exports use). Each row gets a best-guess
+   EXPENSE_CATEGORIES value from merchant/description keywords, which the
+   user can override in the preview table before confirming. */
+const EXPENSE_CATEGORY_KEYWORDS = {
+  fuel: ['shell','chevron','exxon','exxonmobil','mobil','arco',' bp ','76 ','circle k','circlek','speedway','sunoco','marathon','texaco','valero','costco gas','wawa','quiktrip',' qt ','pilot travel','flying j','gas station','fuel','conoco','phillips 66','citgo'],
+  cleaning: ['carwash','car wash','autospa','auto spa','detailing','mister car wash','zips car wash'],
+  tolls: ['toll','ezpass','e-zpass','sunpass','fastrak','tollway','turnpike','tollroad','ipass'],
+  parking: ['parking','parkmobile','park mobile','spothero','airport parking','parking garage','ampco'],
+  insurance: ['insurance','geico','progressive','allstate','state farm','liberty mutual','farmers insurance','nationwide ins','usaa','root insurance','turo insurance'],
+  maintenance: ['autozone',"o'reilly",'oreilly','advance auto','napa auto','jiffy lube','valvoline','pep boys','discount tire','firestone','midas','meineke','mechanic','auto repair','auto parts','tire shop','brake','collision','les schwab']
+};
+function guessExpenseCategory(desc){
+  const d = (desc||'').toLowerCase();
+  for(const cat of Object.keys(EXPENSE_CATEGORY_KEYWORDS)){
+    if(EXPENSE_CATEGORY_KEYWORDS[cat].some(kw=>d.includes(kw))) return cat;
+  }
+  return 'other';
+}
+const NON_EXPENSE_KEYWORDS = ['payment received','autopay','auto-pay','thank you','online payment','ach payment','card payment','mobile payment','deposit','transfer to','transfer from','direct deposit','refund','credit balance','cash back redemption'];
+function parseExpenseCSV(headers, rows){
+  const dateCol = findCol(headers, ['transaction date','trans date','posted date','post date','date']);
+  const descCol = findCol(headers, ['description','merchant','payee','memo','name','transaction']);
+  const debitCol = findCol(headers, ['debit','withdrawal']);
+  const creditCol = findCol(headers, ['credit','deposit']);
+  const amountCol = findCol(headers, ['amount']);
+  if(!dateCol || (!debitCol && !amountCol && !creditCol)) return null;
+  const out = [];
+  for(const r of rows){
+    const dateVal = r[dateCol];
+    if(!dateVal) continue;
+    const d = new Date(dateVal);
+    if(isNaN(d)) continue;
+    const desc = descCol ? (r[descCol]||'').trim() : '';
+
+    const debitVal = debitCol ? parseFloat((r[debitCol]||'').replace(/[^0-9.\-]/g,'')) : NaN;
+    const creditVal = creditCol ? parseFloat((r[creditCol]||'').replace(/[^0-9.\-]/g,'')) : NaN;
+    const genericVal = amountCol ? parseFloat((r[amountCol]||'').replace(/[^0-9.\-]/g,'')) : NaN;
+
+    let amount = 0;
+    let looksLikeCredit = false;
+    if(!isNaN(debitVal) && debitVal){
+      amount = Math.abs(debitVal);
+    } else if(!isNaN(creditVal) && creditVal){
+      // Separate credit column with a value means money came IN (a deposit
+      // or payment), not an expense — flag it so it's unchecked by default.
+      amount = Math.abs(creditVal);
+      looksLikeCredit = true;
+    } else if(!isNaN(genericVal) && genericVal){
+      amount = Math.abs(genericVal);
+    } else {
+      continue;
+    }
+    if(!amount) continue;
+
+    const descLower = desc.toLowerCase();
+    const flaggedNonExpense = looksLikeCredit || NON_EXPENSE_KEYWORDS.some(kw=>descLower.includes(kw));
+
+    out.push({
+      rowId: uid(),
+      date: d.toISOString().slice(0,10),
+      description: desc || '(no description)',
+      amount: Math.round(amount*100)/100,
+      category: guessExpenseCategory(desc),
+      vehicleId: null,
+      include: !flaggedNonExpense
+    });
+  }
+  return out.sort((a,b)=>a.date.localeCompare(b.date));
+}
+function renderExpenseCsvPreview(){
+  if(!expenseCsvRows) return '';
+  if(!expenseCsvPreview){
+    return `<div style="font-size:12px;color:var(--red);">Couldn't find recognizable date/amount columns in this CSV.</div>`;
+  }
+  if(!expenseCsvPreview.length){
+    return `<div class="empty">No expense-looking rows found in this file.</div>`;
+  }
+  const includedCount = expenseCsvPreview.filter(r=>r.include).length;
+  return `
+    <table class="csv-preview">
+      <tr><th></th><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th>Vehicle</th></tr>
+      ${expenseCsvPreview.map(row=>`
+        <tr>
+          <td><input type="checkbox" data-expense-include="${row.rowId}" ${row.include?'checked':''} style="margin:0;width:auto;"></td>
+          <td>${fmtDate(row.date)}</td>
+          <td>${row.description}</td>
+          <td>${fmtMoney(row.amount)}</td>
+          <td>
+            <select data-expense-category="${row.rowId}" style="margin:0;">
+              ${EXPENSE_CATEGORIES.map(c=>`<option value="${c}" ${row.category===c?'selected':''}>${c}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <select data-expense-vehicle="${row.rowId}" style="margin:0;">
+              <option value="">Unassigned</option>
+              ${state.vehicles.map(v=>`<option value="${v.id}" ${row.vehicleId===v.id?'selected':''}>${v.name}</option>`).join('')}
+            </select>
+          </td>
+        </tr>
+      `).join('')}
+    </table>
+    <div style="font-size:11px;color:var(--text-faint);margin:8px 0;">Uncheck any rows that aren't real expenses (card payments, refunds, transfers) before confirming. Categories are auto-guessed from the description — fix any that look wrong.</div>
+    <button class="primary" id="confirm-expense-csv">Add ${includedCount} expense${includedCount!==1?'s':''} as profit entries</button>
+  `;
 }
 async function downloadBackup(){
   const filename = 'turo-ops-backup-'+new Date().toISOString().slice(0,10)+'.json';
@@ -718,6 +830,14 @@ function renderProfit(){
             ${csvPreview.map((g,i)=>`<tr><td>${g.month}</td><td>${g.vehicle}</td><td>${fmtMoney(g.total)}</td><td><button class="section-btn" data-csv-add="${i}">add as profit entry</button></td></tr>`).join('')}
           </table>
         ` : csvRows ? `<div style="font-size:12px;color:var(--red);">Couldn't find recognizable earnings/date columns in this CSV.</div>` : ''}
+      </div>
+    </div>
+    <div class="card">
+      <h3>Import expense CSV (bank / credit card) <button class="section-btn" id="toggle-expense-csv-form">${expenseCsvRows?'clear':'+ import'}</button></h3>
+      <div class="toggle-form ${expenseCsvRows?'open':''}" id="expense-csv-form">
+        <div class="file-drop">Select a credit card or bank statement CSV export</div>
+        <input type="file" id="expense-csv-file" accept=".csv">
+        ${renderExpenseCsvPreview()}
       </div>
     </div>
     <div class="card">
@@ -1145,6 +1265,48 @@ function attachHandlers(){
     alert('Added '+fmtMoney(g.total)+' for '+g.vehicle+' ('+g.month+') as a profit entry.');
     render();
   });
+
+  const toggleExpenseCsvBtn = document.getElementById('toggle-expense-csv-form');
+  if(toggleExpenseCsvBtn) toggleExpenseCsvBtn.onclick = () => {
+    if(expenseCsvRows){ expenseCsvRows=null; expenseCsvHeaders=null; expenseCsvPreview=null; render(); }
+    else document.getElementById('expense-csv-form').classList.toggle('open');
+  };
+  const expenseCsvFile = document.getElementById('expense-csv-file');
+  if(expenseCsvFile) expenseCsvFile.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const text = await file.text();
+    const parsed = parseCSV(text);
+    expenseCsvHeaders = parsed.headers; expenseCsvRows = parsed.rows;
+    expenseCsvPreview = parseExpenseCSV(expenseCsvHeaders, expenseCsvRows);
+    render();
+  };
+  document.querySelectorAll('[data-expense-include]').forEach(cb=>cb.onchange=()=>{
+    const row = expenseCsvPreview && expenseCsvPreview.find(r=>r.rowId===cb.dataset.expenseInclude);
+    if(row) row.include = cb.checked;
+    render();
+  });
+  document.querySelectorAll('[data-expense-category]').forEach(sel=>sel.onchange=()=>{
+    const row = expenseCsvPreview && expenseCsvPreview.find(r=>r.rowId===sel.dataset.expenseCategory);
+    if(row) row.category = sel.value;
+  });
+  document.querySelectorAll('[data-expense-vehicle]').forEach(sel=>sel.onchange=()=>{
+    const row = expenseCsvPreview && expenseCsvPreview.find(r=>r.rowId===sel.dataset.expenseVehicle);
+    if(row) row.vehicleId = sel.value||null;
+  });
+  const confirmExpenseCsv = document.getElementById('confirm-expense-csv');
+  if(confirmExpenseCsv) confirmExpenseCsv.onclick = async () => {
+    confirmExpenseCsv.disabled = true;
+    confirmExpenseCsv.textContent = 'Adding...';
+    const toAdd = expenseCsvPreview.filter(r=>r.include);
+    for(const row of toAdd){
+      state.profit.push({ id:uid(), date:row.date, label:row.description, vehicleId:row.vehicleId||null, revenue:0, expenses:row.amount, category:row.category||'other' });
+    }
+    expenseCsvRows = null; expenseCsvHeaders = null; expenseCsvPreview = null;
+    await save('profit');
+    alert('Added '+toAdd.length+' expense'+(toAdd.length!==1?'s':'')+' as profit entries.');
+    render();
+  };
 
   const exportProfitCsv = document.getElementById('export-profit-csv');
   if(exportProfitCsv) exportProfitCsv.onclick = () => {
