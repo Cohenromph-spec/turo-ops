@@ -107,9 +107,10 @@
   <input type="file" id="restore-file" accept=".json" style="display:none;">
 </div>
 
-<!-- Firebase (Firestore) SDK — compat build, no build step required -->
+<!-- Firebase (Firestore + Auth) SDK — compat build, no build step required -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
 
 <script>
@@ -237,8 +238,10 @@ async function pushFullStateToCloud(){
   }
 }
 
+let cloudListenerAttached = false;
 function attachCloudListener(){
-  if(!hasCloudConfig || !docRef) return;
+  if(!hasCloudConfig || !docRef || cloudListenerAttached) return;
+  cloudListenerAttached = true;
   docRef.onSnapshot({includeMetadataChanges:true}, (snap) => {
     cloudStatus = 'ok';
     if(snap.metadata.hasPendingWrites){
@@ -278,7 +281,30 @@ document.addEventListener('focusout', () => {
 async function loadAll(){
   loadLocalCache();
   render(); // paint instantly, never block the UI on a network round-trip
-  attachCloudListener();
+  initCloudAuthThenListen();
+}
+
+function initCloudAuthThenListen(){
+  if(!hasCloudConfig || !docRef) return;
+
+  // If the Auth SDK isn't available for some reason (e.g. script failed to
+  // load), fall back to attaching directly. This only works if the
+  // Firestore rules don't require request.auth != null (i.e. still on
+  // test-mode rules) — under the locked rules it'll just fail closed and
+  // fall back to local-only, same as any other offline scenario.
+  if(typeof firebase.auth !== 'function'){
+    attachCloudListener();
+    return;
+  }
+
+  firebase.auth().onAuthStateChanged((user) => {
+    if(user) attachCloudListener();
+  });
+  firebase.auth().signInAnonymously().catch((err) => {
+    console.warn('Anonymous sign-in failed, falling back to local-only storage', err);
+    cloudStatus = 'unavailable';
+    render();
+  });
 }
 
 async function save(key){
