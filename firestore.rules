@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// ============================================================================
+// TEST-MODE RULES — wide open, expires automatically.
+// ============================================================================
+// This is the default "Start in test mode" rule set Firebase generates,
+// reproduced here so it's version-controlled with the rest of the app.
+//
+// What it does: anyone with your projectId (which is visible in this public
+// repo / in your deployed app's network requests) can read and write your
+// entire Firestore database until the expiry date below.
+//
+// This is fine to get the app working end-to-end quickly, but it is NOT
+// something you want to leave running indefinitely on a public repo, because
+// your projectId is discoverable. Once you've confirmed vehicles /
+// maintenance / financials are syncing correctly across your devices,
+// switch to firestore.rules.locked (Anonymous Auth) — see README.md.
+//
+// IMPORTANT: update the date below to ~30 days from when you paste this in.
+// After that date, ALL reads/writes will be denied until you update the
+// rules again (Firebase test-mode rules always require a hard expiry).
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      // TODO: set this to 30 days from today, format: year, month, day
+      allow read, write: if request.time < timestamp.date(2026, 8, 17);
+    }
+  }
+}

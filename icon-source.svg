@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1f25"/>
+      <stop offset="1" stop-color="#14161a"/>
+    </linearGradient>
+  </defs>
+  <!-- background: rounded square, kept within the maskable "safe zone" -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- simple car glyph, amber on dark, centered with generous padding
+       so it survives being cropped to a circle on Android (maskable icon) -->
+  <g transform="translate(256 266)">
+    <!-- body -->
+    <path d="M -140 20
+             Q -140 -20 -110 -34
+             L -78 -78
+             Q -66 -94 -44 -94
+             L 44 -94
+             Q 66 -94 78 -78
+             L 110 -34
+             Q 140 -20 140 20
+             L 140 56
+             Q 140 74 122 74
+             L 96 74
+             Q 96 100 70 100
+             Q 44 100 44 74
+             L -44 74
+             Q -44 100 -70 100
+             Q -96 100 -96 74
+             L -122 74
+             Q -140 74 -140 56
+             Z"
+          fill="#e8a33d"/>
+    <!-- windshield notch -->
+    <path d="M -78 -78 L -50 -50 L 50 -50 L 78 -78
+             Q 66 -94 44 -94 L -44 -94 Q -66 -94 -78 -78 Z"
+          fill="#14161a" opacity="0.55"/>
+    <!-- wheels -->
+    <circle cx="-70" cy="78" r="30" fill="#14161a"/>
+    <circle cx="-70" cy="78" r="14" fill="#e8a33d"/>
+    <circle cx="70" cy="78" r="30" fill="#14161a"/>
+    <circle cx="70" cy="78" r="14" fill="#e8a33d"/>
+  </g>
+</svg>

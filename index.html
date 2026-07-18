@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Turo Ops</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14161a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Turo Ops">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<style>
+  :root{
+    --bg:#14161a; --panel:#1c1f25; --panel2:#22262e; --border:#2e333c;
+    --text:#eceef0; --text-dim:#9aa1ab; --text-faint:#6b7280;
+    --amber:#e8a33d; --amber-dim:#8a6423;
+    --red:#e0605a; --red-bg:#3a2321;
+    --green:#5cba7d; --green-bg:#1f3327;
+    --blue:#5b9bd5;
+    --mono: 'SF Mono', 'Menlo', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+  .app{max-width:900px;margin:0 auto;padding:16px 16px 76px;}
+  .bottom-bar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--border);z-index:10;}
+  .bottom-bar button{flex:1;max-width:200px;}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+  header h1{font-size:19px;font-weight:600;margin:0;letter-spacing:-0.2px;}
+  header .sub{font-size:12px;color:var(--text-faint);margin-top:2px;}
+  nav{display:flex;gap:4px;overflow-x:auto;margin-bottom:18px;padding-bottom:2px;-webkit-overflow-scrolling:touch;}
+  nav button{flex:0 0 auto;background:var(--panel);border:1px solid var(--border);color:var(--text-dim);padding:9px 14px;border-radius:20px;font-size:13px;font-weight:500;white-space:nowrap;}
+  nav button.active{background:var(--amber);color:#1a1305;border-color:var(--amber);}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+  .card h3{font-size:14px;font-weight:600;margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .row:last-child{border-bottom:none;}
+  .label{color:var(--text-dim);}
+  .val{font-family:var(--mono);font-weight:500;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .metric{background:var(--panel2);border-radius:8px;padding:10px 12px;}
+  .metric .m-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.4px;}
+  .metric .m-val{font-family:var(--mono);font-size:19px;font-weight:600;margin-top:2px;}
+  .metric .m-val.pos{color:var(--green);}
+  .metric .m-val.neg{color:var(--red);}
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:8px;font-size:14px;font-family:var(--sans);margin-bottom:8px;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--amber);}
+  textarea{resize:vertical;min-height:56px;}
+  label.field{font-size:11px;color:var(--text-faint);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.3px;}
+  button.primary{width:100%;background:var(--amber);color:#1a1305;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:600;margin-top:4px;}
+  button.ghost{background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:6px 12px;border-radius:8px;font-size:12px;}
+  button.danger{background:transparent;border:1px solid var(--red);color:var(--red);padding:5px 10px;border-radius:6px;font-size:11px;}
+  .badge{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
+  .badge.overdue{background:var(--red-bg);color:var(--red);}
+  .badge.soon{background:#3a3221;color:var(--amber);}
+  .badge.ok{background:var(--green-bg);color:var(--green);}
+  .vehicle-pick{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;}
+  .vehicle-pick button{flex:0 0 auto;background:var(--panel2);border:1px solid var(--border);color:var(--text-dim);padding:7px 12px;border-radius:8px;font-size:12px;}
+  .vehicle-pick button.active{border-color:var(--amber);color:var(--amber);}
+  .empty{text-align:center;color:var(--text-faint);font-size:13px;padding:24px 10px;}
+  .toggle-form{overflow:hidden;max-height:0;transition:max-height .25s ease;}
+  .toggle-form.open{max-height:1200px;}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+  .section-btn{background:transparent;border:none;color:var(--amber);font-size:12px;font-weight:600;padding:0;}
+  .hist-item{padding:8px 0;border-bottom:1px solid var(--border);}
+  .hist-item:last-child{border-bottom:none;}
+  .hist-top{display:flex;justify-content:space-between;font-size:13px;}
+  .hist-meta{font-size:11px;color:var(--text-faint);margin-top:2px;}
+  .notes-box{background:var(--panel2);border-left:2px solid var(--amber);padding:8px 10px;border-radius:6px;font-size:12px;color:var(--text-dim);margin-top:8px;white-space:pre-wrap;}
+  .interval-row{display:grid;grid-template-columns:1fr 90px 90px;gap:6px;align-items:center;margin-bottom:6px;}
+  .interval-row span{font-size:12px;color:var(--text-dim);}
+  .interval-row input{margin-bottom:0;}
+  .loading{text-align:center;color:var(--text-faint);font-size:13px;padding:40px 10px;}
+  .collapse-toggle{cursor:pointer;user-select:none;}
+  .chip{display:inline-block;font-size:10px;padding:2px 7px;border-radius:8px;background:var(--panel2);color:var(--text-dim);margin-right:4px;}
+  .chip.warn{background:#3a3221;color:var(--amber);}
+  .chip.bad{background:var(--red-bg);color:var(--red);}
+  .due-list-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;}
+  .due-list-item:last-child{border-bottom:none;}
+  .file-drop{border:1px dashed var(--border);border-radius:8px;padding:16px;text-align:center;color:var(--text-faint);font-size:12px;margin-bottom:8px;}
+  table.csv-preview{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px;}
+  table.csv-preview th,table.csv-preview td{padding:6px 4px;border-bottom:1px solid var(--border);text-align:left;}
+  table.csv-preview th{color:var(--text-faint);text-transform:uppercase;font-size:10px;}
+</style>
+</head>
+<body>
+<div class="app">
+<h2 class="sr-only">Turo fleet operations dashboard for tracking maintenance history, upcoming service, vehicle notes, cohost financials, fleet financials, and profit.</h2>
+<header>
+  <div>
+    <h1>Turo ops</h1>
+    <div class="sub" id="fleet-sub">loading fleet...</div>
+  </div>
+</header>
+<div id="backup-banner" style="display:none;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;"></div>
+<nav id="tabs"></nav>
+<div id="content"><div class="loading">Loading your data...</div></div>
+</div>
+<div class="bottom-bar">
+  <button class="ghost" id="backup-btn">Backup</button>
+  <button class="ghost" id="restore-btn">Restore</button>
+  <input type="file" id="restore-file" accept=".json" style="display:none;">
+</div>
+
+<!-- Firebase (Firestore) SDK — compat build, no build step required -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+
+<script>
+const TABS = [
+  {id:'upcoming', label:'Upcoming'},
+  {id:'maintenance', label:'Maintenance log'},
+  {id:'vehicles', label:'Vehicles'},
+  {id:'profit', label:'Profit'},
+  {id:'cohost', label:'Cohost financials'},
+  {id:'fleet', label:'Fleet financials'}
+];
+let state = { vehicles: [], maintenance: [], cohostFin: [], fleetFin: [], profit: [], recurring: [] };
+let activeTab = 'upcoming';
+let selectedVehicleId = null;
+let editingMaintId = null;
+let editingCohostId = null;
+let editingFleetId = null;
+let editingVehicleId = null;
+let editingProfitId = null;
+let collapsedVehicles = new Set();
+let csvRows = null;
+let csvHeaders = null;
+
+const EXPENSE_CATEGORIES = ['fuel','cleaning','tolls','parking','insurance','maintenance','other'];
+
+const MAINT_TYPES = ['Oil change','Tire rotation','Tire replacement','Brakes','Battery','Registration','Inspection','Cleaning/detail','Windshield/glass','Other'];
+const DEFAULT_INTERVALS = { 'Oil change':{mi:5000,days:120}, 'Tire rotation':{mi:6000,days:180}, 'Tire replacement':{mi:40000,days:1095}, 'Brakes':{mi:25000,days:730}, 'Battery':{mi:0,days:1095}, 'Registration':{mi:0,days:365}, 'Inspection':{mi:0,days:365}, 'Cleaning/detail':{mi:0,days:30}, 'Windshield/glass':{mi:0,days:0}, 'Other':{mi:0,days:0} };
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function fmtMoney(n){ return '$'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function intervalFor(v, type){
+  if(v.intervals && v.intervals[type] && (v.intervals[type].mi || v.intervals[type].days)) return v.intervals[type];
+  return DEFAULT_INTERVALS[type];
+}
+
+/* ============================================================================
+   PERSISTENCE LAYER — Firestore (source of truth) + localStorage (offline
+   fallback / instant-paint cache), with a live onSnapshot listener so edits
+   made on another device show up here automatically.
+
+   Design:
+   - On boot we paint instantly from whatever is in localStorage (or empty
+     state on a fresh install), so the app is never blocked on a network call.
+   - If firebase-config.js has real (non-placeholder) values, we open a
+     Firestore document at turoOps/state and attach a live listener.
+   - Every mutation still calls save('vehicles') / save('maintenance') / etc,
+     exactly like the old window.storage-based version, so none of the
+     render/handler code below had to change. save() writes to localStorage
+     first (always succeeds, instant) and then merges that one field into the
+     Firestore doc (best-effort, may be offline).
+   - Firestore's own offline persistence (enablePersistence) is also turned
+     on as a second safety net beneath localStorage.
+   ============================================================================ */
+
+const LS_PREFIX = 'turo-ops:';
+const DATA_KEYS = ['vehicles','maintenance','cohostFin','fleetFin','profit','recurring'];
+
+const hasCloudConfig = !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey && !String(window.FIREBASE_CONFIG.apiKey).startsWith('REPLACE_WITH'));
+let db = null;
+let docRef = null;
+let cloudStatus = hasCloudConfig ? 'unknown' : 'no-config'; // 'unknown' | 'ok' | 'unavailable' | 'no-config'
+let cloudSeeded = false;
+let pendingRenderFromCloud = false;
+
+if(hasCloudConfig){
+  try{
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    db = firebase.firestore();
+    try{ db.enablePersistence({synchronizeTabs:true}).catch(()=>{}); }catch(e){}
+    const path = window.FIREBASE_DOC_PATH || {collection:'turoOps', docId:'state'};
+    docRef = db.collection(path.collection).doc(path.docId);
+  }catch(e){
+    console.warn('Firebase init failed, falling back to local-only storage', e);
+    cloudStatus = 'unavailable';
+    db = null; docRef = null;
+  }
+}
+
+function isFormFieldActive(){
+  const ae = document.activeElement;
+  return !!(ae && ['INPUT','SELECT','TEXTAREA'].includes(ae.tagName));
+}
+
+function loadLocalCache(){
+  for(const k of DATA_KEYS){
+    try{ state[k] = JSON.parse(localStorage.getItem(LS_PREFIX+k) || '[]'); }catch(e){ state[k] = []; }
+  }
+  let lastVid = null;
+  try{ lastVid = JSON.parse(localStorage.getItem(LS_PREFIX+'lastVehicleId') || 'null'); }catch(e){}
+  if(lastVid && state.vehicles.some(v=>v.id===lastVid)) selectedVehicleId = lastVid;
+  else if(!selectedVehicleId && state.vehicles.length) selectedVehicleId = state.vehicles[0].id;
+}
+function persistLocalCache(key){
+  const keys = key ? [key] : DATA_KEYS;
+  for(const k of keys){
+    try{ localStorage.setItem(LS_PREFIX+k, JSON.stringify(state[k]||[])); }catch(e){}
+  }
+}
+
+function mergeCloudSnapshot(data){
+  if(!data) return;
+  for(const k of DATA_KEYS){
+    if(Array.isArray(data[k])) state[k] = data[k];
+  }
+  if(data.lastVehicleId && (!selectedVehicleId || !state.vehicles.some(v=>v.id===selectedVehicleId))){
+    if(state.vehicles.some(v=>v.id===data.lastVehicleId)) selectedVehicleId = data.lastVehicleId;
+  }
+  persistLocalCache();
+}
+
+async function pushFullStateToCloud(){
+  if(!hasCloudConfig || !docRef) return;
+  try{
+    const payload = {};
+    for(const k of DATA_KEYS) payload[k] = state[k]||[];
+    payload.lastVehicleId = selectedVehicleId || null;
+    payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    await docRef.set(payload, {merge:true});
+    cloudStatus = 'ok';
+  }catch(e){
+    console.warn('Could not seed Firestore doc', e);
+    cloudStatus = 'unavailable';
+  }
+}
+
+function attachCloudListener(){
+  if(!hasCloudConfig || !docRef) return;
+  docRef.onSnapshot({includeMetadataChanges:true}, (snap) => {
+    cloudStatus = 'ok';
+    if(snap.metadata.hasPendingWrites){
+      // This is the echo of our own write coming back — local state already
+      // reflects it, so there's nothing new to merge.
+      return;
+    }
+    if(snap.exists){
+      mergeCloudSnapshot(snap.data());
+    } else if(!cloudSeeded){
+      // Brand-new Firestore doc (first time this project has been used) —
+      // seed it with whatever we already have locally on this device.
+      pushFullStateToCloud();
+    }
+    cloudSeeded = true;
+    if(isFormFieldActive()){
+      // Don't yank focus / clobber an in-progress edit. We'll catch up once
+      // the user leaves the field (see focusout listener below).
+      pendingRenderFromCloud = true;
+    } else {
+      render();
+    }
+  }, (err) => {
+    console.warn('Firestore listener error', err);
+    cloudStatus = 'unavailable';
+    render();
+  });
+}
+
+document.addEventListener('focusout', () => {
+  if(pendingRenderFromCloud){
+    pendingRenderFromCloud = false;
+    setTimeout(render, 50);
+  }
+});
+
+async function loadAll(){
+  loadLocalCache();
+  render(); // paint instantly, never block the UI on a network round-trip
+  attachCloudListener();
+}
+
+async function save(key){
+  persistLocalCache(key);
+  if(hasCloudConfig && docRef){
+    try{
+      await docRef.set({ [key]: state[key]||[], updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
+      cloudStatus = 'ok';
+    }catch(e){
+      console.warn('Firestore write failed, data is safe in localStorage', e);
+      cloudStatus = 'unavailable';
+    }
+  }
+  render();
+}
+
+async function rememberVehicle(id){
+  selectedVehicleId = id;
+  try{ localStorage.setItem(LS_PREFIX+'lastVehicleId', JSON.stringify(id)); }catch(e){}
+  if(hasCloudConfig && docRef){
+    try{ await docRef.set({ lastVehicleId: id }, {merge:true}); }catch(e){}
+  }
+}
+function vehicleTotalSpent(vid){
+  return state.maintenance.filter(m=>m.vehicleId===vid).reduce((s,m)=>s+(m.cost||0),0);
+}
+function expiryStatus(dateStr){
+  if(!dateStr) return null;
+  const days = daysBetween(new Date().toISOString().slice(0,10), dateStr);
+  if(days<=0) return 'bad';
+  if(days<=30) return 'warn';
+  return 'ok';
+}
+function fleetDueDates(){
+  const items = [];
+  for(const v of state.vehicles){
+    const due = nextDue(v).filter(d=>d.type==='Registration'||d.type==='Inspection');
+    for(const d of due){ if(d.dueDate) items.push({vehicle:v.name, label:d.type, date:d.dueDate, status:d.status}); }
+    if(v.warrantyExpiration) items.push({vehicle:v.name, label:'Warranty expires', date:v.warrantyExpiration, status:expiryStatus(v.warrantyExpiration)||'ok'});
+    if(v.insuranceRenewal) items.push({vehicle:v.name, label:'Insurance renewal', date:v.insuranceRenewal, status:expiryStatus(v.insuranceRenewal)||'ok'});
+  }
+  return items.sort((a,b)=>a.date.localeCompare(b.date));
+}
+function parseCSV(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
+  if(!lines.length) return {headers:[], rows:[]};
+  const parseLine = (line) => {
+    const out = []; let cur=''; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c = line[i];
+      if(c==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ; }
+      else if(c===',' && !inQ){ out.push(cur); cur=''; }
+      else cur+=c;
+    }
+    out.push(cur);
+    return out.map(s=>s.trim());
+  };
+  const headers = parseLine(lines[0]);
+  const rows = lines.slice(1).map(l=>{
+    const cells = parseLine(l);
+    const obj = {};
+    headers.forEach((h,i)=>obj[h]=cells[i]||'');
+    return obj;
+  });
+  return {headers, rows};
+}
+function findCol(headers, keywords){
+  const lower = headers.map(h=>h.toLowerCase());
+  for(const kw of keywords){
+    const idx = lower.findIndex(h=>h.includes(kw));
+    if(idx>-1) return headers[idx];
+  }
+  return null;
+}
+function csvToMonthlySummary(headers, rows){
+  const vehicleCol = findCol(headers, ['vehicle','car']);
+  const earningsCol = findCol(headers, ['trip earnings','earnings','payout','total']);
+  const dateCol = findCol(headers, ['start date','trip date','date']);
+  if(!earningsCol || !dateCol) return null;
+  const groups = {};
+  for(const r of rows){
+    const dateVal = r[dateCol];
+    if(!dateVal) continue;
+    const d = new Date(dateVal);
+    if(isNaN(d)) continue;
+    const month = d.toISOString().slice(0,7);
+    const vehicle = vehicleCol ? (r[vehicleCol]||'Unknown') : 'All';
+    const amt = parseFloat((r[earningsCol]||'0').replace(/[^0-9.\-]/g,''))||0;
+    const key = month+'|'+vehicle;
+    if(!groups[key]) groups[key] = {month, vehicle, total:0, count:0};
+    groups[key].total += amt;
+    groups[key].count += 1;
+  }
+  return Object.values(groups).sort((a,b)=>b.month.localeCompare(a.month));
+}
+async function downloadBackup(){
+  const filename = 'turo-ops-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  let shared = false;
+  if(navigator.canShare){
+    try{
+      const file = new File([blob], filename, {type:'application/json'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title:'Turo ops backup'});
+        shared = true;
+      }
+    }catch(e){ }
+  }
+  if(!shared){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  try{ localStorage.setItem(LS_PREFIX+'lastBackup', new Date().toISOString()); }catch(e){}
+  render();
+}
+async function restoreBackup(file){
+  const text = await file.text();
+  let parsed;
+  try{ parsed = JSON.parse(text); }catch(e){ alert('That file isn\'t valid backup JSON.'); return; }
+  const keys = ['vehicles','maintenance','cohostFin','fleetFin','profit','recurring'];
+  const found = keys.filter(k=>Array.isArray(parsed[k]));
+  if(!found.length){ alert('No recognizable data found in that file.'); return; }
+  if(!confirm('This will replace your current data with the backup ('+found.map(k=>k+': '+parsed[k].length).join(', ')+'). Continue?')) return;
+  for(const k of keys){
+    state[k] = Array.isArray(parsed[k]) ? parsed[k] : [];
+    await save(k);
+  }
+  try{ localStorage.setItem(LS_PREFIX+'lastBackup', new Date().toISOString()); }catch(e){}
+  selectedVehicleId = state.vehicles.length ? state.vehicles[0].id : null;
+  alert('Restored. Your data is back.');
+  render();
+}
+function lastBackupDaysAgo(){
+  try{
+    const raw = localStorage.getItem(LS_PREFIX+'lastBackup');
+    if(!raw) return null;
+    return daysBetween(raw.slice(0,10), new Date().toISOString().slice(0,10));
+  }catch(e){ return null; }
+}
+
+function nextDue(v){
+  const logs = state.maintenance.filter(m=>m.vehicleId===v.id);
+  const results = [];
+  for(const type of MAINT_TYPES){
+    const interval = intervalFor(v, type);
+    if(!interval || (!interval.mi && !interval.days)) continue;
+    const last = logs.filter(m=>m.type===type).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+    if(!last) continue;
+    let dueMi=null, dueDate=null;
+    if(interval.mi) dueMi = last.mileage + interval.mi;
+    if(interval.days) dueDate = new Date(new Date(last.date).getTime()+interval.days*86400000).toISOString().slice(0,10);
+    const curMi = v.currentMileage||0;
+    const miLeft = dueMi!=null ? dueMi-curMi : Infinity;
+    const daysLeft = dueDate!=null ? daysBetween(new Date().toISOString().slice(0,10), dueDate) : Infinity;
+    const status = (miLeft<=0||daysLeft<=0) ? 'overdue' : (miLeft<=500||daysLeft<=14) ? 'soon' : 'ok';
+    results.push({type, dueMi, dueDate, miLeft, daysLeft, status, last});
+  }
+  return results.sort((a,b)=>{
+    const order={overdue:0,soon:1,ok:2};
+    return order[a.status]-order[b.status];
+  });
+}
+
+function render(){
+  document.getElementById('fleet-sub').textContent = state.vehicles.length + ' vehicle' + (state.vehicles.length!==1?'s':'') + ' in fleet';
+  const daysSince = lastBackupDaysAgo();
+  const banner = document.getElementById('backup-banner');
+  if(banner){
+    if(cloudStatus==='ok'){
+      banner.style.display='none';
+    } else if(cloudStatus==='no-config'){
+      banner.style.display='block'; banner.className='card'; banner.style.fontSize='12px';
+      banner.style.borderColor='var(--amber)'; banner.style.color='var(--amber)';
+      banner.textContent = "Cloud sync isn't set up yet - paste your project's values into firebase-config.js to sync across devices. Your data is saved on this device only for now" + (daysSince!==null ? (', last backup: '+daysSince+' days ago') : '') + '.';
+    } else if(cloudStatus==='unavailable' && state.vehicles.length){
+      banner.style.display='block'; banner.className='card'; banner.style.fontSize='12px';
+      banner.style.borderColor='var(--red)'; banner.style.color='var(--red)';
+      banner.textContent = "Cloud sync isn't working right now - your data is only saved on this device. Tap Backup below regularly" + (daysSince!==null ? (' (last one: '+daysSince+' days ago)') : '') + '.';
+    } else {
+      banner.style.display='none';
+    }
+  }
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = TABS.map(t=>`<button class="${t.id===activeTab?'active':''}" data-tab="${t.id}">${t.label}</button>`).join('');
+  tabsEl.querySelectorAll('button').forEach(b=>b.onclick=()=>{ activeTab=b.dataset.tab; render(); });
+
+  const content = document.getElementById('content');
+  if(activeTab==='upcoming') content.innerHTML = renderUpcoming();
+  else if(activeTab==='maintenance') content.innerHTML = renderMaintenance();
+  else if(activeTab==='vehicles') content.innerHTML = renderVehicles();
+  else if(activeTab==='profit') content.innerHTML = renderProfit();
+  else if(activeTab==='cohost') content.innerHTML = renderCohost();
+  else if(activeTab==='fleet') content.innerHTML = renderFleetFin();
+  attachHandlers();
+}
+
+function renderUpcoming(){
+  if(!state.vehicles.length) return `<div class="empty">Add a vehicle in the Vehicles tab to start tracking maintenance.</div>`;
+  let html = '';
+  const dueDates = fleetDueDates();
+  if(dueDates.length){
+    html += `<div class="card">
+      <h3>All upcoming dates</h3>
+      ${dueDates.map(d=>`
+        <div class="due-list-item">
+          <span>${d.vehicle} · ${d.label}</span>
+          <span class="chip ${d.status==='overdue'||d.status==='bad'?'bad':d.status==='soon'||d.status==='warn'?'warn':''}">${fmtDate(d.date)}</span>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+  for(const v of state.vehicles){
+    const due = nextDue(v);
+    const worst = due[0];
+    const collapsed = collapsedVehicles.has(v.id);
+    const warrStatus = expiryStatus(v.warrantyExpiration);
+    const insStatus = expiryStatus(v.insuranceRenewal);
+    html += `<div class="card">
+      <h3 class="collapse-toggle" data-collapse="${v.id}">${v.name} <span>${warrStatus&&warrStatus!=='ok'?`<span class="chip ${warrStatus}">warranty</span>`:''}${insStatus&&insStatus!=='ok'?`<span class="chip ${insStatus}">insurance</span>`:''}<span class="badge ${worst?worst.status:'ok'}">${worst?worst.status:'not tracked'}</span></span></h3>
+      ${collapsed ? '' : `
+      <div class="row"><span class="label">Current mileage</span><span class="val">${(v.currentMileage||0).toLocaleString()} mi</span></div>
+      ${due.length ? due.map(d=>`
+        <div class="row">
+          <span class="label">${d.type}</span>
+          <span class="val">${d.dueMi!=null?d.dueMi.toLocaleString()+' mi':''}${d.dueMi!=null&&d.dueDate?' / ':''}${d.dueDate?fmtDate(d.dueDate):''}</span>
+        </div>
+      `).join('') : `<div style="font-size:12px;color:var(--text-faint);padding:6px 0;">No service logged yet - log a service in the Maintenance log tab to start tracking what's due.</div>`}
+      ${v.warrantyExpiration ? `<div class="row"><span class="label">Warranty expires</span><span class="val">${fmtDate(v.warrantyExpiration)}</span></div>` : ''}
+      ${v.insuranceRenewal ? `<div class="row"><span class="label">Insurance renewal</span><span class="val">${fmtDate(v.insuranceRenewal)}</span></div>` : ''}
+      ${v.notes ? `<div class="notes-box">${v.notes}</div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <input type="number" id="quick-mi-${v.id}" placeholder="update mileage" style="margin-bottom:0;">
+        <button class="ghost" data-quick-mi="${v.id}" style="flex:0 0 auto;">Save</button>
+      </div>
+      `}
+    </div>`;
+  }
+  return html;
+}
+
+function renderMaintenance(){
+  if(!state.vehicles.length) return `<div class="empty">Add a vehicle first in the Vehicles tab.</div>`;
+  const v = state.vehicles.find(x=>x.id===selectedVehicleId) || state.vehicles[0];
+  selectedVehicleId = v.id;
+  const logs = state.maintenance.filter(m=>m.vehicleId===v.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const editing = editingMaintId ? logs.find(l=>l.id===editingMaintId) : null;
+  const lastLog = logs[0];
+  return `
+    <div class="vehicle-pick">${state.vehicles.map(x=>`<button data-vid="${x.id}" class="${x.id===selectedVehicleId?'active':''}">${x.name}</button>`).join('')}</div>
+    <div class="card">
+      <h3>${editing?'Edit service':'Log service'}
+        <span>
+          ${!editing && lastLog ? `<button class="section-btn" id="same-as-last" style="margin-right:12px;">same as last time</button>`:''}
+          <button class="section-btn" id="toggle-maint-form">${editing?'cancel':'+ add'}</button>
+        </span>
+      </h3>
+      <div class="toggle-form ${editing?'open':''}" id="maint-form">
+        <label class="field">Type</label>
+        <select id="m-type">${MAINT_TYPES.map(t=>`<option value="${t}" ${editing&&editing.type===t?'selected':''}>${t}</option>`).join('')}</select>
+        <label class="field">Date</label>
+        <input type="date" id="m-date" value="${editing?editing.date:new Date().toISOString().slice(0,10)}">
+        <label class="field">Mileage at service</label>
+        <input type="number" id="m-mileage" placeholder="${v.currentMileage||0}" value="${editing?editing.mileage:''}">
+        <label class="field">Cost</label>
+        <input type="number" id="m-cost" placeholder="0.00" step="0.01" value="${editing?editing.cost:''}">
+        <label class="field">Shop / who did it</label>
+        <input type="text" id="m-shop" placeholder="e.g. Jiffy Lube, self" value="${editing?editing.shop:''}">
+        <label class="field">Notes</label>
+        <input type="text" id="m-notes" placeholder="optional" value="${editing?editing.notes:''}">
+        <button class="primary" id="save-maint">${editing?'Save changes':'Save service record'}</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>History</h3>
+      ${logs.length ? logs.map(l=>`
+        <div class="hist-item">
+          <div class="hist-top"><span>${l.type}</span><span style="display:flex;align-items:center;gap:10px;"><span class="val">${fmtMoney(l.cost)}</span><button class="section-btn" data-edit-maint="${l.id}">edit</button></span></div>
+          <div class="hist-meta">${fmtDate(l.date)} · ${l.mileage.toLocaleString()} mi ${l.shop?'· '+l.shop:''} ${l.notes?'· '+l.notes:''}</div>
+        </div>
+      `).join('') : `<div class="empty">No service logged yet for this vehicle.</div>`}
+    </div>
+  `;
+}
+
+function renderVehicles(){
+  const editingVehicle = editingVehicleId ? state.vehicles.find(v=>v.id===editingVehicleId) : null;
+  const intervalTypes = MAINT_TYPES.filter(t=>DEFAULT_INTERVALS[t].mi || DEFAULT_INTERVALS[t].days);
+  return `
+    <div class="card">
+      <h3>${editingVehicle?'Edit vehicle':'Add vehicle'} <button class="section-btn" id="toggle-veh-form">${editingVehicle?'cancel':'+ add'}</button></h3>
+      <div class="toggle-form ${editingVehicle?'open':''}" id="veh-form">
+        <label class="field">Name</label>
+        <input type="text" id="v-name" placeholder="e.g. Ford Transit" value="${editingVehicle?editingVehicle.name:''}">
+        <label class="field">VIN</label>
+        <input type="text" id="v-vin" placeholder="optional" value="${editingVehicle?editingVehicle.vin:''}">
+        <label class="field">Current mileage</label>
+        <input type="number" id="v-mileage" placeholder="0" value="${editingVehicle?editingVehicle.currentMileage:''}">
+        <label class="field">Turo listing ID</label>
+        <input type="text" id="v-listing" placeholder="optional" value="${editingVehicle?editingVehicle.listing:''}">
+        <label class="field">Notes (warranty, known issues, etc)</label>
+        <textarea id="v-notes" placeholder="e.g. Tires under warranty until 40k mi">${editingVehicle?(editingVehicle.notes||''):''}</textarea>
+        <label class="field">Warranty expiration date</label>
+        <input type="date" id="v-warranty" value="${editingVehicle&&editingVehicle.warrantyExpiration?editingVehicle.warrantyExpiration:''}">
+        <label class="field">Insurance renewal date</label>
+        <input type="date" id="v-insurance" value="${editingVehicle&&editingVehicle.insuranceRenewal?editingVehicle.insuranceRenewal:''}">
+        <label class="field">Custom maintenance intervals (leave blank to use default)</label>
+        ${intervalTypes.map(t=>{
+          const cur = editingVehicle && editingVehicle.intervals && editingVehicle.intervals[t] ? editingVehicle.intervals[t] : {};
+          const def = DEFAULT_INTERVALS[t];
+          return `<div class="interval-row">
+            <span>${t}</span>
+            <input type="number" id="vi-mi-${t.replace(/[^a-zA-Z0-9]/g,'')}" placeholder="${def.mi||'mi'}" value="${cur.mi||''}">
+            <input type="number" id="vi-days-${t.replace(/[^a-zA-Z0-9]/g,'')}" placeholder="${def.days||'days'}" value="${cur.days||''}">
+          </div>`;
+        }).join('')}
+        <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;">Left column: miles between service. Right column: days between service.</div>
+        <button class="primary" id="save-vehicle">${editingVehicle?'Save changes':'Add vehicle'}</button>
+      </div>
+    </div>
+    ${state.vehicles.map(v=>`
+      <div class="card">
+        <h3>${v.name} <span><button class="section-btn" data-edit-vehicle="${v.id}" style="margin-right:12px;">edit</button><button class="danger" data-del-vehicle="${v.id}">Remove</button></span></h3>
+        <div class="row"><span class="label">VIN</span><span class="val">${v.vin||'—'}</span></div>
+        <div class="row"><span class="label">Current mileage</span><span class="val" id="mi-display-${v.id}">${(v.currentMileage||0).toLocaleString()} mi</span></div>
+        <div class="row"><span class="label">Turo listing</span><span class="val">${v.listing||'—'}</span></div>
+        <div class="row"><span class="label">Lifetime maintenance spend</span><span class="val">${fmtMoney(vehicleTotalSpent(v.id))}</span></div>
+        ${v.warrantyExpiration ? `<div class="row"><span class="label">Warranty expires</span><span class="val">${fmtDate(v.warrantyExpiration)}</span></div>` : ''}
+        ${v.insuranceRenewal ? `<div class="row"><span class="label">Insurance renewal</span><span class="val">${fmtDate(v.insuranceRenewal)}</span></div>` : ''}
+        ${v.notes ? `<div class="notes-box">${v.notes}</div>` : ''}
+        <label class="field" style="margin-top:8px;">Update mileage</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="update-mi-${v.id}" placeholder="new mileage" style="margin-bottom:0;">
+          <button class="ghost" data-update-mi="${v.id}" style="flex:0 0 auto;">Save</button>
+        </div>
+      </div>
+    `).join('')}
+    ${!state.vehicles.length ? `<div class="empty">No vehicles yet.</div>` : ''}
+  `;
+}
+
+function renderProfit(){
+  const rows = state.profit.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const editing = editingProfitId ? rows.find(r=>r.id===editingProfitId) : null;
+  const totalRevenue = rows.reduce((s,r)=>s+(r.revenue||0),0);
+  const totalExpenses = rows.reduce((s,r)=>s+(r.expenses||0),0);
+  const netProfit = totalRevenue - totalExpenses;
+  const vehicleName = id => (state.vehicles.find(v=>v.id===id)||{}).name || 'Unassigned';
+
+  const byVehicle = {};
+  for(const r of rows){
+    const key = r.vehicleId || 'none';
+    if(!byVehicle[key]) byVehicle[key] = {revenue:0, expenses:0};
+    byVehicle[key].revenue += r.revenue||0;
+    byVehicle[key].expenses += r.expenses||0;
+  }
+  const byCategory = {};
+  for(const r of rows){
+    const cat = r.category || 'other';
+    byCategory[cat] = (byCategory[cat]||0) + (r.expenses||0);
+  }
+
+  const csvPreview = csvRows ? csvToMonthlySummary(csvHeaders, csvRows) : null;
+
+  return `
+    <div class="card">
+      <h3>Overview</h3>
+      <div class="grid3">
+        <div class="metric"><div class="m-label">Total revenue</div><div class="m-val">${fmtMoney(totalRevenue)}</div></div>
+        <div class="metric"><div class="m-label">Total expenses</div><div class="m-val">${fmtMoney(totalExpenses)}</div></div>
+        <div class="metric"><div class="m-label">Net profit</div><div class="m-val ${netProfit>=0?'pos':'neg'}">${fmtMoney(netProfit)}</div></div>
+      </div>
+    </div>
+    ${Object.keys(byVehicle).length ? `
+    <div class="card">
+      <h3>By vehicle</h3>
+      ${Object.entries(byVehicle).map(([vid,d])=>`
+        <div class="row"><span class="label">${vid==='none'?'Unassigned':vehicleName(vid)}</span><span class="val">${fmtMoney(d.revenue-d.expenses)} net</span></div>
+      `).join('')}
+    </div>` : ''}
+    ${Object.keys(byCategory).length ? `
+    <div class="card">
+      <h3>Expenses by category</h3>
+      ${Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`
+        <div class="row"><span class="label" style="text-transform:capitalize;">${cat}</span><span class="val">${fmtMoney(amt)}</span></div>
+      `).join('')}
+    </div>` : ''}
+    <div class="card">
+      <h3>Recurring expenses <button class="section-btn" id="toggle-recurring-form">+ add</button></h3>
+      <div class="toggle-form" id="recurring-form">
+        <label class="field">Name</label>
+        <input type="text" id="r-name" placeholder="e.g. Insurance">
+        <label class="field">Amount (monthly)</label>
+        <input type="number" id="r-amount" placeholder="0.00" step="0.01">
+        <button class="primary" id="save-recurring">Save recurring item</button>
+      </div>
+      ${state.recurring.length ? state.recurring.map(r=>`
+        <div class="row"><span class="label">${r.name}</span><span style="display:flex;align-items:center;gap:10px;"><span class="val">${fmtMoney(r.amount)}/mo</span><button class="section-btn" data-quickadd-recurring="${r.id}">+ add to entries</button><button class="danger" data-del-recurring="${r.id}">×</button></span></div>
+      `).join('') : `<div style="font-size:12px;color:var(--text-faint);">No recurring expenses saved yet - add insurance, storage, etc, then quick-add them each month.</div>`}
+    </div>
+    <div class="card">
+      <h3>Import Turo CSV <button class="section-btn" id="toggle-csv-form">${csvRows?'clear':'+ import'}</button></h3>
+      <div class="toggle-form ${csvRows?'open':''}" id="csv-form">
+        <div class="file-drop">Select your Turo earnings CSV export</div>
+        <input type="file" id="csv-file" accept=".csv">
+        ${csvPreview ? `
+          <table class="csv-preview">
+            <tr><th>Month</th><th>Vehicle</th><th>Total</th><th></th></tr>
+            ${csvPreview.map((g,i)=>`<tr><td>${g.month}</td><td>${g.vehicle}</td><td>${fmtMoney(g.total)}</td><td><button class="section-btn" data-csv-add="${i}">add as profit entry</button></td></tr>`).join('')}
+          </table>
+        ` : csvRows ? `<div style="font-size:12px;color:var(--red);">Couldn't find recognizable earnings/date columns in this CSV.</div>` : ''}
+      </div>
+    </div>
+    <div class="card">
+      <h3>${editing?'Edit entry':'Add entry'} <button class="section-btn" id="toggle-profit-form">${editing?'cancel':'+ add'}</button><button class="section-btn" id="export-profit-csv" style="margin-left:12px;">export CSV</button></h3>
+      <div class="toggle-form ${editing?'open':''}" id="profit-form">
+        <label class="field">Label</label>
+        <input type="text" id="p-label" placeholder="e.g. July payout, or leave blank" value="${editing?(editing.label||''):''}">
+        <label class="field">Date</label>
+        <input type="date" id="p-date" value="${editing?editing.date:new Date().toISOString().slice(0,10)}">
+        <label class="field">Vehicle</label>
+        <select id="p-vehicle">
+          <option value="">Unassigned</option>
+          ${state.vehicles.map(v=>`<option value="${v.id}" ${editing&&editing.vehicleId===v.id?'selected':''}>${v.name}</option>`).join('')}
+        </select>
+        <label class="field">Revenue / made</label>
+        <input type="number" id="p-revenue" placeholder="0.00" step="0.01" value="${editing?editing.revenue:''}">
+        <label class="field">Expenses</label>
+        <input type="number" id="p-expenses" placeholder="0.00" step="0.01" value="${editing?editing.expenses:''}">
+        <label class="field">Expense category</label>
+        <select id="p-category">${EXPENSE_CATEGORIES.map(c=>`<option value="${c}" ${editing&&editing.category===c?'selected':''}>${c}</option>`).join('')}</select>
+        <button class="primary" id="save-profit">${editing?'Save changes':'Save entry'}</button>
+      </div>
+    </div>
+    ${rows.map(r=>{
+      const net = (r.revenue||0)-(r.expenses||0);
+      return `
+      <div class="card">
+        <h3>${r.label||fmtDate(r.date)} <span><button class="section-btn" data-edit-profit="${r.id}" style="margin-right:12px;">edit</button><button class="danger" data-del-profit="${r.id}">Remove</button></span></h3>
+        <div class="row"><span class="label">Date</span><span class="val">${fmtDate(r.date)}</span></div>
+        <div class="row"><span class="label">Vehicle</span><span class="val">${r.vehicleId?vehicleName(r.vehicleId):'Unassigned'}</span></div>
+        ${r.expenses ? `<div class="row"><span class="label">Category</span><span class="val" style="text-transform:capitalize;">${r.category||'other'}</span></div>` : ''}
+        <div class="grid3">
+          <div class="metric"><div class="m-label">Revenue</div><div class="m-val">${fmtMoney(r.revenue)}</div></div>
+          <div class="metric"><div class="m-label">Expenses</div><div class="m-val">${fmtMoney(r.expenses)}</div></div>
+          <div class="metric"><div class="m-label">Net</div><div class="m-val ${net>=0?'pos':'neg'}">${fmtMoney(net)}</div></div>
+        </div>
+      </div>`;
+    }).join('')}
+    ${!rows.length ? `<div class="empty">No entries yet. Add what you made and what it cost you.</div>` : ''}
+  `;
+}
+
+function renderCohost(){
+  const rows = state.cohostFin.sort((a,b)=>b.month.localeCompare(a.month));
+  const editingCohost = editingCohostId ? rows.find(r=>r.id===editingCohostId) : null;
+  const cohostNames = [...new Set(state.cohostFin.map(r=>r.cohostName).filter(Boolean))];
+  const vehicleName = id => (state.vehicles.find(v=>v.id===id)||{}).name || '—';
+  const paidRows = rows.filter(r=>r.paid).sort((a,b)=>(b.paidDate||'').localeCompare(a.paidDate||''));
+  return `
+    <div class="card">
+      <h3>Send to a cohost</h3>
+      <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">Pick a cohost to send just their months as a plain-text summary.</div>
+      ${cohostNames.length ? `
+        <select id="export-cohost-pick">${cohostNames.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+        <button class="primary" id="export-cohost">Share summary</button>
+      ` : `<div class="empty">Add a month below with a cohost name to enable export.</div>`}
+    </div>
+    ${paidRows.length ? `
+    <div class="card">
+      <h3>Payout history</h3>
+      ${paidRows.map(r=>`<div class="row"><span class="label">${r.cohostName} · ${r.month}</span><span class="val">${fmtDate(r.paidDate)}</span></div>`).join('')}
+    </div>` : ''}
+    <div class="card">
+      <h3>${editingCohost?'Edit month':'Add month'} <button class="section-btn" id="toggle-cohost-form">${editingCohost?'cancel':'+ add'}</button></h3>
+      <div class="toggle-form ${editingCohost?'open':''}" id="cohost-form">
+        <label class="field">Cohost name</label>
+        <input type="text" id="c-name" placeholder="e.g. cohost name" value="${editingCohost?editingCohost.cohostName||'':''}">
+        <label class="field">Vehicle</label>
+        <select id="c-vehicle">
+          <option value="">All / not vehicle-specific</option>
+          ${state.vehicles.map(v=>`<option value="${v.id}" ${editingCohost&&editingCohost.vehicleId===v.id?'selected':''}>${v.name}</option>`).join('')}
+        </select>
+        <label class="field">Month</label>
+        <input type="month" id="c-month" value="${editingCohost?editingCohost.month:new Date().toISOString().slice(0,7)}">
+        <label class="field">Total Turo revenue</label>
+        <input type="number" id="c-revenue" placeholder="0.00" step="0.01" value="${editingCohost?editingCohost.revenue:''}">
+        <label class="field">Shared expenses (maintenance, cleaning, etc)</label>
+        <input type="number" id="c-expenses" placeholder="0.00" step="0.01" value="${editingCohost?editingCohost.expenses:''}">
+        <label class="field">Cohost split (%)</label>
+        <input type="number" id="c-split" placeholder="40" value="${editingCohost?editingCohost.split:40}">
+        <label class="field">Paid?</label>
+        <select id="c-paid"><option value="no" ${editingCohost&&!editingCohost.paid?'selected':''}>Not paid yet</option><option value="yes" ${editingCohost&&editingCohost.paid?'selected':''}>Paid</option></select>
+        <label class="field">Paid date</label>
+        <input type="date" id="c-paid-date" value="${editingCohost&&editingCohost.paidDate?editingCohost.paidDate:''}">
+        <button class="primary" id="save-cohost">${editingCohost?'Save changes':'Save month'}</button>
+      </div>
+    </div>
+    ${rows.map(r=>{
+      const net = r.revenue - r.expenses;
+      const cohostShare = net * (r.split/100);
+      return `
+      <div class="card">
+        <h3>${r.cohostName||'Unnamed'} · ${r.month} <span><button class="section-btn" data-edit-cohost="${r.id}" style="margin-right:12px;">edit</button><button class="danger" data-del-cohost="${r.id}">Remove</button></span></h3>
+        <div class="row"><span class="label">Vehicle</span><span class="val">${r.vehicleId?vehicleName(r.vehicleId):'All / not vehicle-specific'}</span></div>
+        <div class="row"><span class="label">Payout status</span><span class="chip ${r.paid?'':'warn'}">${r.paid?'Paid '+fmtDate(r.paidDate):'Unpaid'}</span></div>
+        <div class="grid2">
+          <div class="metric"><div class="m-label">Revenue</div><div class="m-val">${fmtMoney(r.revenue)}</div></div>
+          <div class="metric"><div class="m-label">Expenses</div><div class="m-val">${fmtMoney(r.expenses)}</div></div>
+          <div class="metric"><div class="m-label">Net</div><div class="m-val">${fmtMoney(net)}</div></div>
+          <div class="metric"><div class="m-label">Cohost share (${r.split}%)</div><div class="m-val">${fmtMoney(cohostShare)}</div></div>
+        </div>
+      </div>`;
+    }).join('')}
+    ${!rows.length ? `<div class="empty">No months logged yet.</div>` : ''}
+  `;
+}
+
+function renderFleetFin(){
+  const rows = state.fleetFin.sort((a,b)=>b.month.localeCompare(a.month));
+  const editingFleet = editingFleetId ? rows.find(r=>r.id===editingFleetId) : null;
+  return `
+    <div class="card">
+      <h3>Export summary <button class="section-btn" id="export-fleet">share summary</button></h3>
+      <div style="font-size:12px;color:var(--text-faint);">Sends a plain-text summary of every month logged, ready to paste into a text or email.</div>
+    </div>
+    <div class="card">
+      <h3>${editingFleet?'Edit month':'Add month'} <button class="section-btn" id="toggle-fleet-form">${editingFleet?'cancel':'+ add'}</button></h3>
+      <div class="toggle-form ${editingFleet?'open':''}" id="fleet-form">
+        <label class="field">Month</label>
+        <input type="month" id="f-month" value="${editingFleet?editingFleet.month:new Date().toISOString().slice(0,7)}">
+        <label class="field">Total revenue (all vehicles)</label>
+        <input type="number" id="f-revenue" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.revenue:''}">
+        <label class="field">Maintenance costs</label>
+        <input type="number" id="f-maint" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.maint:''}">
+        <label class="field">Insurance / Turo fees</label>
+        <input type="number" id="f-fees" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.fees:''}">
+        <label class="field">Other expenses</label>
+        <input type="number" id="f-other" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.other:''}">
+        <label class="field">Cohost payout</label>
+        <input type="number" id="f-cohost-payout" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.cohostPayout:''}">
+        <button class="primary" id="save-fleet">${editingFleet?'Save changes':'Save month'}</button>
+      </div>
+    </div>
+    ${rows.map(r=>{
+      const totalExp = (r.maint||0)+(r.fees||0)+(r.other||0)+(r.cohostPayout||0);
+      const net = r.revenue - totalExp;
+      return `
+      <div class="card">
+        <h3>${r.month} <span><button class="section-btn" data-edit-fleet="${r.id}" style="margin-right:12px;">edit</button><button class="danger" data-del-fleet="${r.id}">Remove</button></span></h3>
+        <div class="grid3">
+          <div class="metric"><div class="m-label">Revenue</div><div class="m-val">${fmtMoney(r.revenue)}</div></div>
+          <div class="metric"><div class="m-label">Expenses</div><div class="m-val">${fmtMoney(totalExp)}</div></div>
+          <div class="metric"><div class="m-label">Net profit</div><div class="m-val">${fmtMoney(net)}</div></div>
+        </div>
+        <div class="row"><span class="label">Maintenance</span><span class="val">${fmtMoney(r.maint)}</span></div>
+        <div class="row"><span class="label">Insurance / fees</span><span class="val">${fmtMoney(r.fees)}</span></div>
+        <div class="row"><span class="label">Other</span><span class="val">${fmtMoney(r.other)}</span></div>
+        <div class="row"><span class="label">Cohost payout</span><span class="val">${fmtMoney(r.cohostPayout)}</span></div>
+      </div>`;
+    }).join('')}
+    ${!rows.length ? `<div class="empty">No months logged yet.</div>` : ''}
+  `;
+}
+
+function cohostSummaryText(cohostName){
+  const rows = state.cohostFin.filter(r=>r.cohostName===cohostName).sort((a,b)=>b.month.localeCompare(a.month));
+  if(!rows.length) return 'No months logged yet for '+cohostName+'.';
+  const vehicleName = id => (state.vehicles.find(v=>v.id===id)||{}).name || '';
+  let out = 'Turo cohost summary for '+cohostName+'\n';
+  for(const r of rows){
+    const net = r.revenue - r.expenses;
+    const share = net * (r.split/100);
+    out += `\n${r.month}${r.vehicleId?' ('+vehicleName(r.vehicleId)+')':''}\nRevenue: ${fmtMoney(r.revenue)}\nExpenses: ${fmtMoney(r.expenses)}\nNet: ${fmtMoney(net)}\n${cohostName}'s share (${r.split}%): ${fmtMoney(share)}\n`;
+  }
+  return out;
+}
+function fleetSummaryText(){
+  const rows = state.fleetFin.sort((a,b)=>b.month.localeCompare(a.month));
+  if(!rows.length) return 'No fleet months logged yet.';
+  let out = 'Turo fleet financials\n';
+  for(const r of rows){
+    const totalExp = (r.maint||0)+(r.fees||0)+(r.other||0)+(r.cohostPayout||0);
+    const net = r.revenue - totalExp;
+    out += `\n${r.month}\nRevenue: ${fmtMoney(r.revenue)}\nMaintenance: ${fmtMoney(r.maint)}\nInsurance/fees: ${fmtMoney(r.fees)}\nOther: ${fmtMoney(r.other)}\nCohost payout: ${fmtMoney(r.cohostPayout)}\nNet profit: ${fmtMoney(net)}\n`;
+  }
+  return out;
+}
+async function shareOrCopy(text, title){
+  if(navigator.share){
+    try{ await navigator.share({ text, title }); return; }catch(e){}
+  }
+  try{
+    await navigator.clipboard.writeText(text);
+    alert('Copied to clipboard');
+  }catch(e){
+    alert(text);
+  }
+}
+
+function attachHandlers(){
+  const backupBtn = document.getElementById('backup-btn');
+  if(backupBtn) backupBtn.onclick = downloadBackup;
+  const restoreBtn = document.getElementById('restore-btn');
+  const restoreFile = document.getElementById('restore-file');
+  if(restoreBtn && restoreFile){
+    restoreBtn.onclick = () => restoreFile.click();
+    restoreFile.onchange = (e) => {
+      const file = e.target.files[0];
+      if(file) restoreBackup(file);
+      e.target.value = '';
+    };
+  }
+  document.querySelectorAll('[data-collapse]').forEach(el=>el.onclick=(e)=>{
+    if(e.target.closest('button')) return;
+    const id = el.dataset.collapse;
+    if(collapsedVehicles.has(id)) collapsedVehicles.delete(id); else collapsedVehicles.add(id);
+    render();
+  });
+  const expCohost = document.getElementById('export-cohost');
+  if(expCohost) expCohost.onclick = () => {
+    const pick = document.getElementById('export-cohost-pick');
+    const name = pick ? pick.value : '';
+    shareOrCopy(cohostSummaryText(name), name+' summary');
+  };
+  const expFleet = document.getElementById('export-fleet');
+  if(expFleet) expFleet.onclick = () => shareOrCopy(fleetSummaryText(), 'Fleet financials');
+
+  const toggleMaintBtn = document.getElementById('toggle-maint-form');
+  if(toggleMaintBtn) toggleMaintBtn.onclick = () => {
+    if(editingMaintId){ editingMaintId = null; render(); }
+    else document.getElementById('maint-form').classList.toggle('open');
+  };
+  const toggleVehBtn = document.getElementById('toggle-veh-form');
+  if(toggleVehBtn) toggleVehBtn.onclick = () => {
+    if(editingVehicleId){ editingVehicleId = null; render(); }
+    else document.getElementById('veh-form').classList.toggle('open');
+  };
+  document.querySelectorAll('[data-edit-vehicle]').forEach(b=>b.onclick=()=>{ editingVehicleId = b.dataset.editVehicle; render(); });
+  const toggleCohostBtn = document.getElementById('toggle-cohost-form');
+  if(toggleCohostBtn) toggleCohostBtn.onclick = () => {
+    if(editingCohostId){ editingCohostId = null; render(); }
+    else document.getElementById('cohost-form').classList.toggle('open');
+  };
+  const toggleFleetBtn = document.getElementById('toggle-fleet-form');
+  if(toggleFleetBtn) toggleFleetBtn.onclick = () => {
+    if(editingFleetId){ editingFleetId = null; render(); }
+    else document.getElementById('fleet-form').classList.toggle('open');
+  };
+  const toggleProfitBtn = document.getElementById('toggle-profit-form');
+  if(toggleProfitBtn) toggleProfitBtn.onclick = () => {
+    if(editingProfitId){ editingProfitId = null; render(); }
+    else document.getElementById('profit-form').classList.toggle('open');
+  };
+  document.querySelectorAll('[data-edit-cohost]').forEach(b=>b.onclick=()=>{ editingCohostId = b.dataset.editCohost; render(); });
+  document.querySelectorAll('[data-edit-fleet]').forEach(b=>b.onclick=()=>{ editingFleetId = b.dataset.editFleet; render(); });
+  document.querySelectorAll('[data-edit-profit]').forEach(b=>b.onclick=()=>{ editingProfitId = b.dataset.editProfit; render(); });
+
+  document.querySelectorAll('[data-vid]').forEach(b=>b.onclick=async()=>{ await rememberVehicle(b.dataset.vid); render(); });
+
+  document.querySelectorAll('[data-quick-mi]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.quickMi; const input=document.getElementById('quick-mi-'+id);
+    const val=Number(input.value); if(!val) return;
+    const v=state.vehicles.find(x=>x.id===id); v.currentMileage=val;
+    await save('vehicles'); render();
+  });
+
+  const saveVehicle = document.getElementById('save-vehicle');
+  if(saveVehicle) saveVehicle.onclick = async () => {
+    const name = document.getElementById('v-name').value.trim();
+    if(!name) return;
+    const intervalTypes = MAINT_TYPES.filter(t=>DEFAULT_INTERVALS[t].mi || DEFAULT_INTERVALS[t].days);
+    const intervals = {};
+    for(const t of intervalTypes){
+      const key = t.replace(/[^a-zA-Z0-9]/g,'');
+      const mi = Number(document.getElementById('vi-mi-'+key).value)||0;
+      const days = Number(document.getElementById('vi-days-'+key).value)||0;
+      if(mi||days) intervals[t] = {mi, days};
+    }
+    const record = { name, vin:document.getElementById('v-vin').value.trim(), currentMileage:Number(document.getElementById('v-mileage').value)||0, listing:document.getElementById('v-listing').value.trim(), notes:document.getElementById('v-notes').value.trim(), warrantyExpiration:document.getElementById('v-warranty').value||null, insuranceRenewal:document.getElementById('v-insurance').value||null, intervals };
+    if(editingVehicleId){
+      const idx = state.vehicles.findIndex(v=>v.id===editingVehicleId);
+      if(idx>-1) state.vehicles[idx] = {...state.vehicles[idx], ...record};
+      editingVehicleId = null;
+    } else {
+      state.vehicles.push({ id:uid(), ...record });
+    }
+    await save('vehicles'); render();
+  };
+  document.querySelectorAll('[data-del-vehicle]').forEach(b=>b.onclick=async()=>{
+    state.vehicles = state.vehicles.filter(v=>v.id!==b.dataset.delVehicle);
+    await save('vehicles'); render();
+  });
+  document.querySelectorAll('[data-update-mi]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.updateMi; const input=document.getElementById('update-mi-'+id);
+    const val=Number(input.value); if(!val) return;
+    const v=state.vehicles.find(x=>x.id===id); v.currentMileage=val;
+    await save('vehicles'); render();
+  });
+
+  const sameAsLast = document.getElementById('same-as-last');
+  if(sameAsLast) sameAsLast.onclick = () => {
+    const logs = state.maintenance.filter(m=>m.vehicleId===selectedVehicleId).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const last = logs[0];
+    if(!last) return;
+    document.getElementById('maint-form').classList.add('open');
+    document.getElementById('m-type').value = last.type;
+    document.getElementById('m-cost').value = last.cost;
+    document.getElementById('m-shop').value = last.shop;
+  };
+  document.querySelectorAll('[data-edit-maint]').forEach(b=>b.onclick=()=>{
+    editingMaintId = b.dataset.editMaint; render();
+  });
+
+  const saveMaint = document.getElementById('save-maint');
+  if(saveMaint) saveMaint.onclick = async () => {
+    const v = state.vehicles.find(x=>x.id===selectedVehicleId);
+    const mileage = Number(document.getElementById('m-mileage').value)||v.currentMileage||0;
+    const record = {
+      vehicleId:v.id, type:document.getElementById('m-type').value,
+      date:document.getElementById('m-date').value, mileage,
+      cost:Number(document.getElementById('m-cost').value)||0,
+      shop:document.getElementById('m-shop').value.trim(),
+      notes:document.getElementById('m-notes').value.trim()
+    };
+    if(editingMaintId){
+      const idx = state.maintenance.findIndex(m=>m.id===editingMaintId);
+      if(idx>-1) state.maintenance[idx] = {...state.maintenance[idx], ...record};
+      editingMaintId = null;
+    } else {
+      state.maintenance.push({ id:uid(), ...record });
+    }
+    if(mileage > (v.currentMileage||0)) v.currentMileage = mileage;
+    await save('maintenance'); await save('vehicles'); render();
+  };
+
+  const saveCohost = document.getElementById('save-cohost');
+  if(saveCohost) saveCohost.onclick = async () => {
+    const month = document.getElementById('c-month').value;
+    if(!month) return;
+    const record = { month, cohostName:document.getElementById('c-name').value.trim()||'Unnamed', vehicleId:document.getElementById('c-vehicle').value||null, revenue:Number(document.getElementById('c-revenue').value)||0, expenses:Number(document.getElementById('c-expenses').value)||0, split:Number(document.getElementById('c-split').value)||40, paid:document.getElementById('c-paid').value==='yes', paidDate:document.getElementById('c-paid-date').value||null };
+    if(editingCohostId){
+      const idx = state.cohostFin.findIndex(r=>r.id===editingCohostId);
+      if(idx>-1) state.cohostFin[idx] = {...state.cohostFin[idx], ...record};
+      editingCohostId = null;
+    } else {
+      state.cohostFin.push({ id:uid(), ...record });
+    }
+    await save('cohostFin'); render();
+  };
+  document.querySelectorAll('[data-del-cohost]').forEach(b=>b.onclick=async()=>{
+    state.cohostFin = state.cohostFin.filter(r=>r.id!==b.dataset.delCohost);
+    await save('cohostFin'); render();
+  });
+
+  const saveFleet = document.getElementById('save-fleet');
+  if(saveFleet) saveFleet.onclick = async () => {
+    const month = document.getElementById('f-month').value;
+    if(!month) return;
+    const record = { month, revenue:Number(document.getElementById('f-revenue').value)||0, maint:Number(document.getElementById('f-maint').value)||0, fees:Number(document.getElementById('f-fees').value)||0, other:Number(document.getElementById('f-other').value)||0, cohostPayout:Number(document.getElementById('f-cohost-payout').value)||0 };
+    if(editingFleetId){
+      const idx = state.fleetFin.findIndex(r=>r.id===editingFleetId);
+      if(idx>-1) state.fleetFin[idx] = {...state.fleetFin[idx], ...record};
+      editingFleetId = null;
+    } else {
+      state.fleetFin = state.fleetFin.filter(r=>r.month!==month);
+      state.fleetFin.push({ id:uid(), ...record });
+    }
+    await save('fleetFin'); render();
+  };
+  document.querySelectorAll('[data-del-fleet]').forEach(b=>b.onclick=async()=>{
+    state.fleetFin = state.fleetFin.filter(r=>r.id!==b.dataset.delFleet);
+    await save('fleetFin'); render();
+  });
+
+  const saveProfit = document.getElementById('save-profit');
+  if(saveProfit) saveProfit.onclick = async () => {
+    const date = document.getElementById('p-date').value || new Date().toISOString().slice(0,10);
+    const record = { date, label:document.getElementById('p-label').value.trim(), vehicleId:document.getElementById('p-vehicle').value||null, revenue:Number(document.getElementById('p-revenue').value)||0, expenses:Number(document.getElementById('p-expenses').value)||0, category:document.getElementById('p-category').value||'other' };
+    if(editingProfitId){
+      const idx = state.profit.findIndex(r=>r.id===editingProfitId);
+      if(idx>-1) state.profit[idx] = {...state.profit[idx], ...record};
+      editingProfitId = null;
+    } else {
+      state.profit.push({ id:uid(), ...record });
+    }
+    await save('profit'); render();
+  };
+  document.querySelectorAll('[data-del-profit]').forEach(b=>b.onclick=async()=>{
+    state.profit = state.profit.filter(r=>r.id!==b.dataset.delProfit);
+    await save('profit'); render();
+  });
+
+  const toggleRecurringBtn = document.getElementById('toggle-recurring-form');
+  if(toggleRecurringBtn) toggleRecurringBtn.onclick = () => document.getElementById('recurring-form').classList.toggle('open');
+  const saveRecurring = document.getElementById('save-recurring');
+  if(saveRecurring) saveRecurring.onclick = async () => {
+    const name = document.getElementById('r-name').value.trim();
+    const amount = Number(document.getElementById('r-amount').value)||0;
+    if(!name) return;
+    state.recurring.push({ id:uid(), name, amount });
+    await save('recurring'); render();
+  };
+  document.querySelectorAll('[data-del-recurring]').forEach(b=>b.onclick=async()=>{
+    state.recurring = state.recurring.filter(r=>r.id!==b.dataset.delRecurring);
+    await save('recurring'); render();
+  });
+  document.querySelectorAll('[data-quickadd-recurring]').forEach(b=>b.onclick=async()=>{
+    const item = state.recurring.find(r=>r.id===b.dataset.quickaddRecurring);
+    if(!item) return;
+    state.profit.push({ id:uid(), date:new Date().toISOString().slice(0,10), label:item.name, vehicleId:null, revenue:0, expenses:item.amount, category:'other' });
+    await save('profit'); render();
+  });
+
+  const toggleCsvBtn = document.getElementById('toggle-csv-form');
+  if(toggleCsvBtn) toggleCsvBtn.onclick = () => {
+    if(csvRows){ csvRows=null; csvHeaders=null; render(); }
+    else document.getElementById('csv-form').classList.toggle('open');
+  };
+  const csvFile = document.getElementById('csv-file');
+  if(csvFile) csvFile.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const text = await file.text();
+    const parsed = parseCSV(text);
+    csvHeaders = parsed.headers; csvRows = parsed.rows;
+    render();
+  };
+  document.querySelectorAll('[data-csv-add]').forEach(b=>b.onclick=async()=>{
+    const summary = csvToMonthlySummary(csvHeaders, csvRows);
+    const g = summary[Number(b.dataset.csvAdd)];
+    if(!g) return;
+    const matchedVehicle = state.vehicles.find(v=>v.name.toLowerCase()===g.vehicle.toLowerCase());
+    state.profit.push({ id:uid(), date:g.month+'-01', label:'Turo import: '+g.vehicle, vehicleId:matchedVehicle?matchedVehicle.id:null, revenue:g.total, expenses:0, category:'other' });
+    await save('profit');
+    alert('Added '+fmtMoney(g.total)+' for '+g.vehicle+' ('+g.month+') as a profit entry.');
+    render();
+  });
+
+  const exportProfitCsv = document.getElementById('export-profit-csv');
+  if(exportProfitCsv) exportProfitCsv.onclick = () => {
+    const vehicleName = id => (state.vehicles.find(v=>v.id===id)||{}).name || '';
+    let csv = 'Date,Label,Vehicle,Revenue,Expenses,Category,Net\n';
+    for(const r of state.profit.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''))){
+      const net = (r.revenue||0)-(r.expenses||0);
+      csv += `${r.date},"${(r.label||'').replace(/"/g,'""')}","${vehicleName(r.vehicleId)}",${r.revenue||0},${r.expenses||0},${r.category||'other'},${net}\n`;
+    }
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'turo-profit-'+new Date().toISOString().slice(0,10)+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+}
+
+loadAll();
+</script>
+
+<script>
+// Register the PWA service worker (app-shell caching for offline reliability).
+// Safe no-op if the browser doesn't support it or sw.js isn't reachable.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
