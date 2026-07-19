@@ -121,8 +121,7 @@ const TABS = [
   {id:'vehicles', label:'Vehicles'},
   {id:'profit', label:'Profit'},
   {id:'cohost', label:'Cohost financials'},
-  {id:'fleet', label:'Fleet financials'},
-  {id:'info', label:'Info'}
+    {id:'info', label:'Info'}
 ];
 let state = { vehicles: [], maintenance: [], cohostFin: [], fleetFin: [], profit: [], recurring: [], cohosts: [] };
 let activeTab = 'upcoming';
@@ -734,8 +733,7 @@ function render(){
   else if(activeTab==='vehicles') content.innerHTML = renderVehicles();
   else if(activeTab==='profit') content.innerHTML = renderProfit();
   else if(activeTab==='cohost') content.innerHTML = renderCohost();
-  else if(activeTab==='fleet') content.innerHTML = renderFleetFin();
-  else if(activeTab==='info') content.innerHTML = renderInfo();
+    else if(activeTab==='info') content.innerHTML = renderInfo();
   attachHandlers();
 }
 
@@ -1106,54 +1104,7 @@ function renderCohost(){
   `;
 }
 
-function renderFleetFin(){
-  const rows = state.fleetFin.sort((a,b)=>b.month.localeCompare(a.month));
-  const editingFleet = editingFleetId ? rows.find(r=>r.id===editingFleetId) : null;
-  return `
-    <div class="card">
-      <h3>Export summary <button class="section-btn" id="export-fleet">share summary</button></h3>
-      <div style="font-size:12px;color:var(--text-faint);">Sends a plain-text summary of every month logged, ready to paste into a text or email.</div>
-    </div>
-    <div class="card">
-      <h3>${editingFleet?'Edit month':'Add month'} <button class="section-btn" id="toggle-fleet-form">${editingFleet?'cancel':'+ add'}</button></h3>
-      <div class="toggle-form ${editingFleet?'open':''}" id="fleet-form">
-        <label class="field">Month</label>
-        <input type="month" id="f-month" value="${editingFleet?editingFleet.month:new Date().toISOString().slice(0,7)}">
-        <label class="field">Total revenue (all vehicles)</label>
-        <input type="number" id="f-revenue" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.revenue:''}">
-        <label class="field">Maintenance costs</label>
-        <input type="number" id="f-maint" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.maint:''}">
-        <label class="field">Insurance / Turo fees</label>
-        <input type="number" id="f-fees" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.fees:''}">
-        <label class="field">Other expenses</label>
-        <input type="number" id="f-other" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.other:''}">
-        <label class="field">Cohost payout</label>
-        <input type="number" id="f-cohost-payout" placeholder="0.00" step="0.01" value="${editingFleet?editingFleet.cohostPayout:''}">
-        <button class="primary" id="save-fleet">${editingFleet?'Save changes':'Save month'}</button>
-      </div>
-    </div>
-    ${rows.map(r=>{
-      const totalExp = (r.maint||0)+(r.fees||0)+(r.other||0)+(r.cohostPayout||0);
-      const net = r.revenue - totalExp;
-      return `
-      <div class="card">
-        <h3>${r.month} <span><button class="section-btn" data-edit-fleet="${r.id}" style="margin-right:12px;">edit</button><button class="danger" data-del-fleet="${r.id}">Remove</button></span></h3>
-        <div class="grid3">
-          <div class="metric"><div class="m-label">Revenue</div><div class="m-val">${fmtMoney(r.revenue)}</div></div>
-          <div class="metric"><div class="m-label">Expenses</div><div class="m-val">${fmtMoney(totalExp)}</div></div>
-          <div class="metric"><div class="m-label">Net profit</div><div class="m-val">${fmtMoney(net)}</div></div>
-        </div>
-        <div class="row"><span class="label">Maintenance</span><span class="val">${fmtMoney(r.maint)}</span></div>
-        <div class="row"><span class="label">Insurance / fees</span><span class="val">${fmtMoney(r.fees)}</span></div>
-        <div class="row"><span class="label">Other</span><span class="val">${fmtMoney(r.other)}</span></div>
-        <div class="row"><span class="label">Cohost payout</span><span class="val">${fmtMoney(r.cohostPayout)}</span></div>
-      </div>`;
-    }).join('')}
-    ${!rows.length ? `<div class="empty">No months logged yet.</div>` : ''}
-  `;
-}
-
-  function renderInfo(){
+function renderInfo(){
       return TABS.filter(t=>t.id!=='info').map(t=>{
             const expanded = expandedInfoRows.has(t.id);
             return `<div class="card">
@@ -1172,17 +1123,6 @@ function cohostSummaryText(cohostName){
     const net = r.revenue - r.expenses;
     const share = net * (r.split/100);
     out += `\n${r.month}${r.vehicleId?' ('+vehicleName(r.vehicleId)+')':''}\nRevenue: ${fmtMoney(r.revenue)}\nExpenses: ${fmtMoney(r.expenses)}\nNet: ${fmtMoney(net)}\n${cohostName}'s share (${r.split}%): ${fmtMoney(share)}\n`;
-  }
-  return out;
-}
-function fleetSummaryText(){
-  const rows = state.fleetFin.sort((a,b)=>b.month.localeCompare(a.month));
-  if(!rows.length) return 'No fleet months logged yet.';
-  let out = 'Turo fleet financials\n';
-  for(const r of rows){
-    const totalExp = (r.maint||0)+(r.fees||0)+(r.other||0)+(r.cohostPayout||0);
-    const net = r.revenue - totalExp;
-    out += `\n${r.month}\nRevenue: ${fmtMoney(r.revenue)}\nMaintenance: ${fmtMoney(r.maint)}\nInsurance/fees: ${fmtMoney(r.fees)}\nOther: ${fmtMoney(r.other)}\nCohost payout: ${fmtMoney(r.cohostPayout)}\nNet profit: ${fmtMoney(net)}\n`;
   }
   return out;
 }
@@ -1228,9 +1168,7 @@ function attachHandlers(){
     const name = pick ? pick.value : '';
     shareOrCopy(cohostSummaryText(name), name+' summary');
   };
-  const expFleet = document.getElementById('export-fleet');
-  if(expFleet) expFleet.onclick = () => shareOrCopy(fleetSummaryText(), 'Fleet financials');
-
+  
   const toggleMaintBtn = document.getElementById('toggle-maint-form');
   if(toggleMaintBtn) toggleMaintBtn.onclick = () => {
     if(editingMaintId){ editingMaintId = null; render(); }
@@ -1252,12 +1190,7 @@ function attachHandlers(){
     if(editingCohostId){ editingCohostId = null; render(); }
     else document.getElementById('cohost-form').classList.toggle('open');
   };
-  const toggleCohostRosterBtn = document.getElementById('toggle-cohost-roster-form'); if(toggleCohostRosterBtn) toggleCohostRosterBtn.onclick = () => { document.getElementById('cohost-roster-form').classList.toggle('open'); }; const saveCohostRosterBtn = document.getElementById('save-cohost-roster'); if(saveCohostRosterBtn) saveCohostRosterBtn.onclick = async () => { const crNameInput = document.getElementById('cr-name'); const crName = (crNameInput.value||'').trim(); if(!crName) return; state.cohosts.push({ id: uid(), name: crName }); await save('cohosts'); render(); }; document.querySelectorAll('[data-del-cohost-roster]').forEach(b=>b.onclick=async()=>{ state.cohosts = state.cohosts.filter(c=>c.id!==b.dataset.delCohostRoster); await save('cohosts'); render(); }); const toggleFleetBtn = document.getElementById('toggle-fleet-form');
-  if(toggleFleetBtn) toggleFleetBtn.onclick = () => {
-    if(editingFleetId){ editingFleetId = null; render(); }
-    else document.getElementById('fleet-form').classList.toggle('open');
-  };
-  const toggleProfitBtn = document.getElementById('toggle-profit-form');
+  const toggleCohostRosterBtn = document.getElementById('toggle-cohost-roster-form'); if(toggleCohostRosterBtn) toggleCohostRosterBtn.onclick = () => { document.getElementById('cohost-roster-form').classList.toggle('open'); }; const saveCohostRosterBtn = document.getElementById('save-cohost-roster'); if(saveCohostRosterBtn) saveCohostRosterBtn.onclick = async () => { const crNameInput = document.getElementById('cr-name'); const crName = (crNameInput.value||'').trim(); if(!crName) return; state.cohosts.push({ id: uid(), name: crName }); await save('cohosts'); render(); }; document.querySelectorAll('[data-del-cohost-roster]').forEach(b=>b.onclick=async()=>{ state.cohosts = state.cohosts.filter(c=>c.id!==b.dataset.delCohostRoster); await save('cohosts'); render(); }); const toggleProfitBtn = document.getElementById('toggle-profit-form');
   if(toggleProfitBtn) toggleProfitBtn.onclick = () => {
     if(editingProfitId){ editingProfitId = null; render(); }
     else document.getElementById('profit-form').classList.toggle('open');
@@ -1363,26 +1296,6 @@ function attachHandlers(){
   document.querySelectorAll('[data-del-cohost]').forEach(b=>b.onclick=async()=>{
     state.cohostFin = state.cohostFin.filter(r=>r.id!==b.dataset.delCohost);
     await save('cohostFin'); render();
-  });
-
-  const saveFleet = document.getElementById('save-fleet');
-  if(saveFleet) saveFleet.onclick = async () => {
-    const month = document.getElementById('f-month').value;
-    if(!month) return;
-    const record = { month, revenue:Number(document.getElementById('f-revenue').value)||0, maint:Number(document.getElementById('f-maint').value)||0, fees:Number(document.getElementById('f-fees').value)||0, other:Number(document.getElementById('f-other').value)||0, cohostPayout:Number(document.getElementById('f-cohost-payout').value)||0 };
-    if(editingFleetId){
-      const idx = state.fleetFin.findIndex(r=>r.id===editingFleetId);
-      if(idx>-1) state.fleetFin[idx] = {...state.fleetFin[idx], ...record};
-      editingFleetId = null;
-    } else {
-      state.fleetFin = state.fleetFin.filter(r=>r.month!==month);
-      state.fleetFin.push({ id:uid(), ...record });
-    }
-    await save('fleetFin'); render();
-  };
-  document.querySelectorAll('[data-del-fleet]').forEach(b=>b.onclick=async()=>{
-    state.fleetFin = state.fleetFin.filter(r=>r.id!==b.dataset.delFleet);
-    await save('fleetFin'); render();
   });
 
   const saveProfit = document.getElementById('save-profit');
