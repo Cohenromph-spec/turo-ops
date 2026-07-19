@@ -140,7 +140,7 @@ let csvHeaders = null;
 let expenseCsvRows = null;
 let expenseCsvHeaders = null;
 let expenseCsvPreview = null;
-let csvUnchecked = new Set();
+let csvUnchecked = new Set(); let csvBulkMonth = ''; let expenseCsvBulkMonth = '';
 let toastMsg = null;
 let toastTimer = null;
 
@@ -996,7 +996,7 @@ const revenueRows = rows.filter(r=>r.revenue>0); const categoryRows = {};
       <h3>Import Turo CSV <button class="section-btn" id="toggle-csv-form">${csvRows?'clear':'+ import'}</button></h3>
       <div class="toggle-form ${csvRows?'open':''}" id="csv-form">
         <div class="file-drop">Select your Turo earnings CSV export</div>
-        <input type="file" id="csv-file" accept=".csv">
+        <input type="file" id="csv-file" accept=".csv">${csvPreview ? `<label class="field">Bulk-select month (auto-checks rows in that month, unchecks all others)</label><input type="month" id="csv-month-picker" value="${csvBulkMonth||''}">` : ''}
         ${csvPreview ? `
           <table class="csv-preview">
             <tr><th></th><th>Month</th><th>Vehicle</th><th>Total</th></tr>
@@ -1011,7 +1011,7 @@ const revenueRows = rows.filter(r=>r.revenue>0); const categoryRows = {};
       <h3>Import expense CSV (bank / credit card) <button class="section-btn" id="toggle-expense-csv-form">${expenseCsvRows?'clear':'+ import'}</button></h3>
       <div class="toggle-form ${expenseCsvRows?'open':''}" id="expense-csv-form">
         <div class="file-drop">Select a credit card or bank statement CSV export</div>
-        <input type="file" id="expense-csv-file" accept=".csv">
+        <input type="file" id="expense-csv-file" accept=".csv">${expenseCsvPreview ? `<label class="field">Bulk-select month (auto-checks rows in that month, unchecks all others)</label><input type="month" id="expense-csv-month-picker" value="${expenseCsvBulkMonth||''}">` : ''}
         ${renderExpenseCsvPreview()}
       </div>
     </div>
@@ -1440,16 +1440,16 @@ function attachHandlers(){
 
   const toggleCsvBtn = document.getElementById('toggle-csv-form');
   if(toggleCsvBtn) toggleCsvBtn.onclick = () => {
-    if(csvRows){ csvRows=null; csvHeaders=null; csvUnchecked=new Set(); render(); }
+    if(csvRows){ csvRows=null; csvHeaders=null; csvUnchecked=new Set(); csvBulkMonth=''; render(); }
     else document.getElementById('csv-form').classList.toggle('open');
   };
-  const csvFile = document.getElementById('csv-file');
+  const csvMonthPicker = document.getElementById('csv-month-picker'); if(csvMonthPicker) csvMonthPicker.onchange = () => { csvBulkMonth = csvMonthPicker.value; if(csvBulkMonth){ const summary = csvToMonthlySummary(csvHeaders, csvRows); csvUnchecked = new Set(summary.filter(g=>g.month!==csvBulkMonth).map(g=>g.month+'|'+g.vehicle)); } render(); }; const csvFile = document.getElementById('csv-file');
   if(csvFile) csvFile.onchange = async (e) => {
     const file = e.target.files[0];
     if(!file) return;
     const text = await file.text();
     const parsed = parseCSV(text);
-    csvHeaders = parsed.headers; csvRows = parsed.rows;
+    csvHeaders = parsed.headers; csvRows = parsed.rows; csvBulkMonth='';
     csvUnchecked = new Set();
     render();
   };
@@ -1489,16 +1489,16 @@ function attachHandlers(){
 
   const toggleExpenseCsvBtn = document.getElementById('toggle-expense-csv-form');
   if(toggleExpenseCsvBtn) toggleExpenseCsvBtn.onclick = () => {
-    if(expenseCsvRows){ expenseCsvRows=null; expenseCsvHeaders=null; expenseCsvPreview=null; render(); }
+    if(expenseCsvRows){ expenseCsvRows=null; expenseCsvHeaders=null; expenseCsvPreview=null; expenseCsvBulkMonth=''; render(); }
     else document.getElementById('expense-csv-form').classList.toggle('open');
   };
-  const expenseCsvFile = document.getElementById('expense-csv-file');
+  const expenseCsvMonthPicker = document.getElementById('expense-csv-month-picker'); if(expenseCsvMonthPicker) expenseCsvMonthPicker.onchange = () => { expenseCsvBulkMonth = expenseCsvMonthPicker.value; if(expenseCsvBulkMonth && expenseCsvPreview){ for(const row of expenseCsvPreview){ row.include = row.date.slice(0,7)===expenseCsvBulkMonth; } } render(); }; const expenseCsvFile = document.getElementById('expense-csv-file');
   if(expenseCsvFile) expenseCsvFile.onchange = async (e) => {
     const file = e.target.files[0];
     if(!file) return;
     const text = await file.text();
     const parsed = parseCSV(text);
-    expenseCsvHeaders = parsed.headers; expenseCsvRows = parsed.rows;
+    expenseCsvHeaders = parsed.headers; expenseCsvRows = parsed.rows; expenseCsvBulkMonth='';
     expenseCsvPreview = parseExpenseCSV(expenseCsvHeaders, expenseCsvRows);
     render();
   };
