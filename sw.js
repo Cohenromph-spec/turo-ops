@@ -9,7 +9,7 @@
 // cached copy when offline. Bump CACHE_NAME whenever you want to force
 // clients to drop old cached assets.
 
-const CACHE_NAME = 'turo-ops-shell-v1';
+const CACHE_NAME = 'turo-ops-shell-v2';
 const SHELL_FILES = [
   './',
   './index.html',
