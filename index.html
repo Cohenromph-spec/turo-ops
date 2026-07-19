@@ -121,7 +121,8 @@ const TABS = [
   {id:'vehicles', label:'Vehicles'},
   {id:'profit', label:'Profit'},
   {id:'cohost', label:'Cohost financials'},
-  {id:'fleet', label:'Fleet financials'}
+  {id:'fleet', label:'Fleet financials'},
+  {id:'info', label:'Info'}
 ];
 let state = { vehicles: [], maintenance: [], cohostFin: [], fleetFin: [], profit: [], recurring: [] };
 let activeTab = 'upcoming';
@@ -133,6 +134,7 @@ let editingVehicleId = null;
 let editingProfitId = null;
 let profitMonthFilter = 'all';
 let collapsedVehicles = new Set();
+let expandedInfoRows = new Set();
 let csvRows = null;
 let csvHeaders = null;
 let expenseCsvRows = null;
@@ -146,7 +148,32 @@ const EXPENSE_CATEGORIES = ['fuel','cleaning','tolls','parking','insurance','mai
 
 const MAINT_TYPES = ['Oil change','Tire rotation','Tire replacement','Brakes','Battery','Registration','Inspection','Cleaning/detail','Windshield/glass','Other'];
 const DEFAULT_INTERVALS = { 'Oil change':{mi:5000,days:120}, 'Tire rotation':{mi:6000,days:180}, 'Tire replacement':{mi:40000,days:1095}, 'Brakes':{mi:25000,days:730}, 'Battery':{mi:0,days:1095}, 'Registration':{mi:0,days:365}, 'Inspection':{mi:0,days:365}, 'Cleaning/detail':{mi:0,days:30}, 'Windshield/glass':{mi:0,days:0}, 'Other':{mi:0,days:0} };
-
+const INFO_CONTENT = {
+    upcoming: `
+        <p>This is your at-a-glance dashboard for maintenance that's due or coming up soon, across your whole fleet.</p>
+            <p><strong>All upcoming dates</strong> at the top lists every due maintenance item and expiration date across every vehicle, soonest first, so you can see what needs attention without opening each vehicle's card.</p>
+                <p>Below that, each vehicle gets its own card. Tap the vehicle's name to expand or collapse its details. The badge next to the name (overdue / soon / ok) reflects the most urgent item for that vehicle, based on the maintenance intervals set on the Vehicles tab.</p>
+                    <ul style="margin:6px 0 6px 18px;padding:0;">
+                          <li>Each due item shows a mileage target and/or a date target, worked out from the last time that service was logged plus its interval.</li>
+                                <li>Warranty and insurance chips appear next to a vehicle's name when either is expiring soon or has already expired.</li>
+                                      <li>The "update mileage" box lets you quickly update a vehicle's current mileage right from this screen, without switching to the Vehicles tab - keeping due dates accurate.</li>
+                                          </ul>
+                                              <p>If a vehicle shows "not tracked," that just means no service has been logged for it yet - log one in the Maintenance log tab to start tracking it.</p>
+                                                `,
+    maintenance: `
+        <p>This is where you log every service done on a vehicle, and see its full service history.</p>
+            <p>Pick the vehicle at the top, then tap <strong>+ add</strong> to open the form: service type, date, mileage at time of service, cost, shop, and notes.</p>
+                <ul style="margin:6px 0 6px 18px;padding:0;">
+                      <li><strong>Same as last time</strong> pre-fills a new entry with the same type and shop as that vehicle's most recent log, so repeat services like oil changes take just a few seconds to enter.</li>
+                            <li>Due dates on the Upcoming tab are calculated from these logs - the app takes the mileage/date of the last logged service of that type and adds the interval (set per-vehicle on the Vehicles tab, or the built-in defaults) to work out what's next due.</li>
+                                  <li><strong>History</strong> below the form shows every past service for the selected vehicle, newest first. Tap "edit" on any entry to correct it - saved changes automatically recalculate due dates.</li>
+                                      </ul>
+                                        `,
+    vehicles: `<p style="color:var(--text-faint);">Coming soon.</p>`,
+    profit: `<p style="color:var(--text-faint);">Coming soon.</p>`,
+    cohost: `<p style="color:var(--text-faint);">Coming soon.</p>`,
+    fleet: `<p style="color:var(--text-faint);">Coming soon.</p>`
+};
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function fmtMoney(n){ return '$'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); }
@@ -676,6 +703,7 @@ function render(){
   else if(activeTab==='profit') content.innerHTML = renderProfit();
   else if(activeTab==='cohost') content.innerHTML = renderCohost();
   else if(activeTab==='fleet') content.innerHTML = renderFleetFin();
+  else if(activeTab==='info') content.innerHTML = renderInfo();
   attachHandlers();
 }
 
@@ -1093,6 +1121,16 @@ function renderFleetFin(){
   `;
 }
 
+  function renderInfo(){
+      return TABS.filter(t=>t.id!=='info').map(t=>{
+            const expanded = expandedInfoRows.has(t.id);
+            return `<div class="card">
+                  <h3 class="collapse-toggle" data-info-toggle="${t.id}">${t.label} <span>${expanded?'▾':'▸'}</span></h3>
+                        ${expanded ? `<div style="font-size:13px;color:var(--text-dim);line-height:1.5;">${INFO_CONTENT[t.id]}</div>` : ''}
+                            </div>`;
+      }).join('');
+  }
+
 function cohostSummaryText(cohostName){
   const rows = state.cohostFin.filter(r=>r.cohostName===cohostName).sort((a,b)=>b.month.localeCompare(a.month));
   if(!rows.length) return 'No months logged yet for '+cohostName+'.';
@@ -1146,6 +1184,11 @@ function attachHandlers(){
     const id = el.dataset.collapse;
     if(collapsedVehicles.has(id)) collapsedVehicles.delete(id); else collapsedVehicles.add(id);
     render();
+  });
+  document.querySelectorAll('[data-info-toggle]').forEach(el=>el.onclick=()=>{
+      const id = el.dataset.infoToggle;
+      if(expandedInfoRows.has(id)) expandedInfoRows.delete(id); else expandedInfoRows.add(id);
+      render();
   });
   const expCohost = document.getElementById('export-cohost');
   if(expCohost) expCohost.onclick = () => {
