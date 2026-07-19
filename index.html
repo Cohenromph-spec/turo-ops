@@ -797,12 +797,18 @@ function renderVehicles(){
           </div>`;
         }).join('')}
         <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;">Left column: miles between service. Right column: days between service.</div>
+        <label class="field" style="display:flex;align-items:center;gap:6px;margin-top:10px;text-transform:none;"><input type="checkbox" id="v-is-cohost" style="width:auto;margin:0;" ${editingVehicle&&editingVehicle.isCohost?'checked':''}> This is a cohost vehicle</label>
+        <div id="v-cohost-split-wrap" style="display:${editingVehicle&&editingVehicle.isCohost?'block':'none'};">
+          <label class="field">Cohost split %</label>
+          <input type="number" id="v-cohost-split" placeholder="40" value="${editingVehicle&&editingVehicle.cohostSplit?editingVehicle.cohostSplit:40}">
+        </div>
         <button class="primary" id="save-vehicle">${editingVehicle?'Save changes':'Add vehicle'}</button>
       </div>
     </div>
     ${state.vehicles.map(v=>`
       <div class="card">
         <h3>${v.name} <span><button class="section-btn" data-edit-vehicle="${v.id}" style="margin-right:12px;">edit</button><button class="danger" data-del-vehicle="${v.id}">Remove</button></span></h3>
+        ${v.isCohost ? `<div class="row"><span class="label">Cohost status</span><span class="chip warn">Cohost vehicle · ${v.cohostSplit||40}% split</span></div>` : ''}
         <div class="row"><span class="label">VIN</span><span class="val">${v.vin||'—'}</span></div>
         <div class="row"><span class="label">Current mileage</span><span class="val" id="mi-display-${v.id}">${(v.currentMileage||0).toLocaleString()} mi</span></div>
         <div class="row"><span class="label">Turo listing</span><span class="val">${v.listing||'—'}</span></div>
@@ -836,6 +842,14 @@ function renderProfit(){
     byVehicle[key].revenue += r.revenue||0;
     byVehicle[key].expenses += r.expenses||0;
   }
+  const cohostShareOwed = rows.reduce((s,r)=>{
+    if(!r.vehicleId) return s;
+    const veh = state.vehicles.find(v=>v.id===r.vehicleId);
+    if(!veh || !veh.isCohost) return s;
+    const net = (r.revenue||0)-(r.expenses||0);
+    return s + net*((veh.cohostSplit||40)/100);
+  },0);
+  const netProfitAfterCohost = netProfit - cohostShareOwed;
 const categoryRows = {};
   for(const cat of EXPENSE_CATEGORIES) categoryRows[cat] = [];
   for(const r of rows){
@@ -867,15 +881,20 @@ const categoryRows = {};
       <div class="grid3">
         <div class="metric"><div class="m-label">Total revenue</div><div class="m-val">${fmtMoney(totalRevenue)}</div></div>
         <div class="metric"><div class="m-label">Total expenses</div><div class="m-val">${fmtMoney(totalExpenses)}</div></div>
-        <div class="metric"><div class="m-label">Net profit</div><div class="m-val ${netProfit>=0?'pos':'neg'}">${fmtMoney(netProfit)}</div></div>
+        <div class="metric"><div class="m-label">Net profit (before cohost)</div><div class="m-val ${netProfit>=0?'pos':'neg'}">${fmtMoney(netProfit)}</div></div>
+        <div class="metric"><div class="m-label">Cohost share owed</div><div class="m-val neg">${fmtMoney(cohostShareOwed)}</div></div>
+        <div class="metric"><div class="m-label">Net profit after cohost</div><div class="m-val ${netProfitAfterCohost>=0?'pos':'neg'}">${fmtMoney(netProfitAfterCohost)}</div></div>
       </div>
     </div>
     ${Object.keys(byVehicle).length ? `
     <div class="card">
       <h3>By vehicle</h3>
-      ${Object.entries(byVehicle).map(([vid,d])=>`
-        <div class="row"><span class="label">${vid==='none'?'Unassigned':vehicleName(vid)}</span><span class="val">${fmtMoney(d.revenue-d.expenses)} net</span></div>
-      `).join('')}
+      ${Object.entries(byVehicle).map(([vid,d])=>{
+        const veh = vid!=='none' ? state.vehicles.find(v=>v.id===vid) : null;
+        const net = d.revenue-d.expenses;
+        const cohostRow = (veh && veh.isCohost) ? `<div class="row"><span class="label">${vehicleName(vid)} — Cohost share (${veh.cohostSplit||40}%)</span><span class="val">${fmtMoney(net*((veh.cohostSplit||40)/100))}</span></div>` : '';
+        return `<div class="row"><span class="label">${vid==='none'?'Unassigned':vehicleName(vid)}</span><span class="val">${fmtMoney(net)} net</span></div>${cohostRow}`;
+      }).join('')}
     </div>` : ''}
     ${EXPENSE_CATEGORIES.map(cat=>{
     const list = categoryRows[cat] || [];
@@ -1136,6 +1155,11 @@ function attachHandlers(){
     else document.getElementById('veh-form').classList.toggle('open');
   };
   document.querySelectorAll('[data-edit-vehicle]').forEach(b=>b.onclick=()=>{ editingVehicleId = b.dataset.editVehicle; render(); });
+  const vIsCohost = document.getElementById('v-is-cohost');
+  if(vIsCohost) vIsCohost.onchange = () => {
+    const wrap = document.getElementById('v-cohost-split-wrap');
+    if(wrap) wrap.style.display = vIsCohost.checked ? 'block' : 'none';
+  };
   const toggleCohostBtn = document.getElementById('toggle-cohost-form');
   if(toggleCohostBtn) toggleCohostBtn.onclick = () => {
     if(editingCohostId){ editingCohostId = null; render(); }
@@ -1176,7 +1200,9 @@ function attachHandlers(){
       const days = Number(document.getElementById('vi-days-'+key).value)||0;
       if(mi||days) intervals[t] = {mi, days};
     }
-    const record = { name, vin:document.getElementById('v-vin').value.trim(), currentMileage:Number(document.getElementById('v-mileage').value)||0, listing:document.getElementById('v-listing').value.trim(), notes:document.getElementById('v-notes').value.trim(), warrantyExpiration:document.getElementById('v-warranty').value||null, insuranceRenewal:document.getElementById('v-insurance').value||null, intervals };
+    const isCohost = document.getElementById('v-is-cohost').checked;
+    const cohostSplit = Number(document.getElementById('v-cohost-split').value)||40;
+    const record = { name, vin:document.getElementById('v-vin').value.trim(), currentMileage:Number(document.getElementById('v-mileage').value)||0, listing:document.getElementById('v-listing').value.trim(), notes:document.getElementById('v-notes').value.trim(), warrantyExpiration:document.getElementById('v-warranty').value||null, insuranceRenewal:document.getElementById('v-insurance').value||null, intervals, isCohost, cohostSplit };
     if(editingVehicleId){
       const idx = state.vehicles.findIndex(v=>v.id===editingVehicleId);
       if(idx>-1) state.vehicles[idx] = {...state.vehicles[idx], ...record};
