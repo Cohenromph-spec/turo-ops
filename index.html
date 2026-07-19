@@ -759,7 +759,7 @@ function renderUpcoming(){
     const warrStatus = expiryStatus(v.warrantyExpiration);
     const insStatus = expiryStatus(v.insuranceRenewal);
     html += `<div class="card">
-      <h3 class="collapse-toggle" data-collapse="${v.id}">${v.name} <span>${warrStatus&&warrStatus!=='ok'?`<span class="chip ${warrStatus}">warranty</span>`:''}${insStatus&&insStatus!=='ok'?`<span class="chip ${insStatus}">insurance</span>`:''}<span class="badge ${worst?worst.status:'ok'}">${worst?worst.status:'not tracked'}</span></span></h3>
+      <h3 class="collapse-toggle" data-collapse="${v.id}">${v.name} <span>${warrStatus&&warrStatus!=='ok'?`<span class="chip ${warrStatus}">warranty</span>`:''}${insStatus&&insStatus!=='ok'?`<span class="chip ${insStatus}">insurance</span>`:''}${v.issues&&v.issues.length?`<span class="chip warn">${v.issues.length} issue${v.issues.length>1?'s':''}</span>`:''}<span class="badge ${worst?worst.status:'ok'}">${worst?worst.status:'not tracked'}</span></span></h3>
       ${collapsed ? '' : `
       <div class="row"><span class="label">Current mileage</span><span class="val">${(v.currentMileage||0).toLocaleString()} mi</span></div>
       ${due.length ? due.map(d=>`
