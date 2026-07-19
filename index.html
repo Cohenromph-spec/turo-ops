@@ -169,10 +169,42 @@ const INFO_CONTENT = {
                                   <li><strong>History</strong> below the form shows every past service for the selected vehicle, newest first. Tap "edit" on any entry to correct it - saved changes automatically recalculate due dates.</li>
                                       </ul>
                                         `,
-    vehicles: `<p style="color:var(--text-faint);">Coming soon.</p>`,
-    profit: `<p style="color:var(--text-faint);">Coming soon.</p>`,
-    cohost: `<p style="color:var(--text-faint);">Coming soon.</p>`,
-    fleet: `<p style="color:var(--text-faint);">Coming soon.</p>`
+vehicles: `
+    <p>This is where you add and manage vehicles in your fleet, and where each vehicle's maintenance intervals and cohost settings live.</p>
+        <p>Tap <strong>+ add</strong> to open the form. Name and current mileage are the basics; VIN and Turo listing ID are optional reference fields. Notes is a free-text box for anything worth remembering - known issues, what's under warranty, etc.</p>
+            <ul style="margin:6px 0 6px 18px;padding:0;">
+                  <li>Warranty expiration and insurance renewal dates show as chips on the Upcoming tab when they're getting close or have already passed.</li>
+                        <li>Custom maintenance intervals let you override the app's built-in defaults for that specific vehicle - enter miles and/or days for any service type, and leave a field blank to keep using the default for that type.</li>
+                              <li>Cohost vehicle marks this vehicle as one you split profit on with someone else, and sets the split percentage. This is what feeds the automatic "Cohost share owed" numbers on the Profit tab - it's separate from the manual Cohost financials tab (see that tab's note for the difference).</li>
+                                  </ul>
+                                      <p>Each vehicle's card shows its VIN, current mileage, Turo listing, and lifetime maintenance spend (every service ever logged for it, added up). The "update mileage" box at the bottom of each card is a shortcut to bump the odometer reading without opening the edit form.</p>
+                                        `,
+    profit: `
+        <p>This is the full financial picture for your fleet: money in, money out, and what's left - with an optional cohost split factored in.</p>
+            <p>Use the <strong>Filter</strong> at the top to look at all-time totals or narrow everything below to a single month.</p>
+                <p><strong>Overview</strong> shows total revenue, total expenses, net profit before any cohost split, cohost share owed, and net profit after cohost. Cohost share owed is calculated automatically from any vehicles marked "Cohost vehicle" on the Vehicles tab - it is separate from the entries you log on the Cohost financials tab, which is its own manual, per-month ledger (see that tab's note for the difference). "Clear all entries" wipes every profit entry for a fresh start - it can't be undone from here, so use it carefully.</p>
+                    <p><strong>By vehicle</strong> breaks revenue, expenses, and net down per vehicle, with an extra cohost-share line for any vehicle marked as a cohost vehicle.</p>
+                        <p><strong>Expenses by category</strong> shows one card per category (fuel, cleaning, tolls, etc) - only categories that actually have entries show up, and tapping a category expands its list.</p>
+                            <p><strong>Recurring expenses</strong> is for costs that repeat every month, like insurance or storage. Save one once, then use "+ add to entries" whenever you want to quick-add that amount as a new expense for the current month instead of retyping it.</p>
+                                <p>The two importers pull data in instead of you typing it by hand:</p>
+                                    <ul style="margin:6px 0 6px 18px;padding:0;">
+                                          <li><strong>Import Turo CSV</strong> takes the earnings export from Turo directly. It groups rows by month and vehicle, shows a preview with a checkbox per row so you can leave out anything you don't want added, then adds the rest as revenue entries.</li>
+                                                <li><strong>Import expense CSV</strong> takes a bank or credit card statement export. It guesses a category for each row from the description, and automatically unchecks anything that looks like a deposit or payment rather than a real expense, so you don't accidentally double-count income as a cost. You can still fix the category, assign a vehicle, or (un)check any row before confirming.</li>
+                                                    </ul>
+                                                        <p>You can also add a single entry by hand with <strong>+ add</strong> - label, date, vehicle, revenue, expenses, and category - and export everything currently shown to a CSV file with the export button.</p>
+                                                          `,
+    cohost: `
+        <p>This tab is a separate, manual ledger for tracking what you owe a cohost month by month - it is not the same as the automatic cohost split that shows up on the Profit tab, and it's worth keeping the two straight.</p>
+            <p>The Profit tab's "Cohost share owed" is calculated automatically from every profit entry tied to a vehicle you've marked "Cohost vehicle." This tab is different: it's for logging actual monthly numbers per cohost by hand - useful if you want a clean record of what was reported, split, and paid, independent of your day-to-day profit entries.</p>
+                <p>Tap <strong>+ add month</strong> to log one: cohost name, the vehicle it applies to (or "all" if it's not vehicle-specific), the month, total Turo revenue, shared expenses, the cohost's split percentage, and whether it's been paid (with a paid date once it has).</p>
+                    <p>Each month's card shows the vehicle, payout status, and the revenue/expenses/net numbers. <strong>Payout history</strong> lists everything marked paid, most recent first.</p>
+                        <p><strong>Send to a cohost</strong> lets you pick a cohost by name and generate a plain-text summary of their months, ready to share or copy into a text or email.</p>
+                          `,
+    fleet: `
+        <p>This is the whole-fleet version of monthly financials - one entry per month covering every vehicle combined, rather than per-vehicle detail.</p>
+            <p>Tap <strong>+ add month</strong> to log: the month, total revenue across all vehicles, maintenance costs, insurance/Turo fees, other expenses, and any cohost payout for that month. Each month's card then shows revenue, expenses, and net profit.</p>
+                <p><strong>Export summary</strong> generates a plain-text summary of every month you've logged, ready to paste into a text message or email.</p>
+                  `
 };
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function fmtMoney(n){ return '$'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
