@@ -136,6 +136,9 @@ let csvHeaders = null;
 let expenseCsvRows = null;
 let expenseCsvHeaders = null;
 let expenseCsvPreview = null;
+let csvUnchecked = new Set();
+let toastMsg = null;
+let toastTimer = null;
 
 const EXPENSE_CATEGORIES = ['fuel','cleaning','tolls','parking','insurance','maintenance','other','payroll'];
 
@@ -145,6 +148,23 @@ const DEFAULT_INTERVALS = { 'Oil change':{mi:5000,days:120}, 'Tire rotation':{mi
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function fmtMoney(n){ return '$'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); }
+function showToast(msg){
+  toastMsg = msg;
+  renderToast();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ toastMsg=null; renderToast(); }, 4000);
+}
+function renderToast(){
+  let el = document.getElementById('toast-msg');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'toast-msg';
+    el.style.cssText = 'position:fixed;left:16px;right:16px;bottom:76px;max-width:868px;margin:0 auto;background:var(--green-bg);color:var(--green);border:1px solid var(--green);padding:10px 14px;border-radius:8px;font-size:13px;text-align:center;z-index:20;box-shadow:0 4px 14px rgba(0,0,0,.35);';
+    document.body.appendChild(el);
+  }
+  if(toastMsg){ el.textContent = toastMsg; el.style.display='block'; }
+  else { el.style.display='none'; }
+}
 function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
 function intervalFor(v, type){
   if(v.intervals && v.intervals[type] && (v.intervals[type].mi || v.intervals[type].days)) return v.intervals[type];
@@ -887,9 +907,11 @@ const categoryRows = {};
         <input type="file" id="csv-file" accept=".csv">
         ${csvPreview ? `
           <table class="csv-preview">
-            <tr><th>Month</th><th>Vehicle</th><th>Total</th><th></th></tr>
-            ${csvPreview.map((g,i)=>`<tr><td>${g.month}</td><td>${g.vehicle}</td><td>${fmtMoney(g.total)}</td><td><button class="section-btn" data-csv-add="${i}">add as profit entry</button></td></tr>`).join('')}
+            <tr><th></th><th>Month</th><th>Vehicle</th><th>Total</th></tr>
+            ${csvPreview.map((g)=>{ const key=g.month+'|'+g.vehicle; const checked=!csvUnchecked.has(key); return `<tr><td><input type="checkbox" data-csv-include="${key}" ${checked?'checked':''} style="margin:0;width:auto;"></td><td>${g.month}</td><td>${g.vehicle}</td><td>${fmtMoney(g.total)}</td></tr>`; }).join('')}
           </table>
+          <div style="font-size:11px;color:var(--text-faint);margin:8px 0;">Uncheck any rows you don't want to add before confirming.</div>
+          <button class="primary" id="confirm-csv-import" ${csvPreview.filter(g=>!csvUnchecked.has(g.month+'|'+g.vehicle)).length===0?'disabled':''}>Add ${csvPreview.filter(g=>!csvUnchecked.has(g.month+'|'+g.vehicle)).length} Checked ${csvPreview.filter(g=>!csvUnchecked.has(g.month+'|'+g.vehicle)).length===1?'Entry':'Entries'}</button>
         ` : csvRows ? `<div style="font-size:12px;color:var(--red);">Couldn't find recognizable earnings/date columns in this CSV.</div>` : ''}
       </div>
     </div>
@@ -1290,7 +1312,7 @@ function attachHandlers(){
 
   const toggleCsvBtn = document.getElementById('toggle-csv-form');
   if(toggleCsvBtn) toggleCsvBtn.onclick = () => {
-    if(csvRows){ csvRows=null; csvHeaders=null; render(); }
+    if(csvRows){ csvRows=null; csvHeaders=null; csvUnchecked=new Set(); render(); }
     else document.getElementById('csv-form').classList.toggle('open');
   };
   const csvFile = document.getElementById('csv-file');
@@ -1300,18 +1322,28 @@ function attachHandlers(){
     const text = await file.text();
     const parsed = parseCSV(text);
     csvHeaders = parsed.headers; csvRows = parsed.rows;
+    csvUnchecked = new Set();
     render();
   };
-  document.querySelectorAll('[data-csv-add]').forEach(b=>b.onclick=async()=>{
-b.disabled = true;
-  const summary = csvToMonthlySummary(csvHeaders, csvRows);
-    const g = summary[Number(b.dataset.csvAdd)];
-    if(!g) return;
-    const matchedVehicle = state.vehicles.find(v=>v.name.toLowerCase()===g.vehicle.toLowerCase());
-    state.profit.push({ id:uid(), date:g.month+'-01', label:'Turo import: '+g.vehicle, vehicleId:matchedVehicle?matchedVehicle.id:null, revenue:g.total, expenses:0, category:'other' });
-    await save('profit');
-const vehicleCol = findCol(csvHeaders, ['vehicle','car']);
+  document.querySelectorAll('[data-csv-include]').forEach(cb=>cb.onchange=()=>{
+    const key = cb.dataset.csvInclude;
+    if(cb.checked) csvUnchecked.delete(key); else csvUnchecked.add(key);
+    render();
+  });
+  const confirmCsvImport = document.getElementById('confirm-csv-import');
+  if(confirmCsvImport) confirmCsvImport.onclick = async () => {
+    confirmCsvImport.disabled = true;
+    confirmCsvImport.textContent = 'Adding...';
+    const summary = csvToMonthlySummary(csvHeaders, csvRows);
+    const toAdd = summary.filter(g=>!csvUnchecked.has(g.month+'|'+g.vehicle));
+    if(!toAdd.length){ confirmCsvImport.disabled=false; render(); return; }
+    const vehicleCol = findCol(csvHeaders, ['vehicle','car']);
     const dateCol = findCol(csvHeaders, ['start date','trip date','date']);
+    for(const g of toAdd){
+      const matchedVehicle = state.vehicles.find(v=>v.name.toLowerCase()===g.vehicle.toLowerCase());
+      state.profit.push({ id:uid(), date:g.month+'-01', label:'Turo import: '+g.vehicle, vehicleId:matchedVehicle?matchedVehicle.id:null, revenue:g.total, expenses:0, category:'other' });
+    }
+    const addedKeys = new Set(toAdd.map(g=>g.month+'|'+g.vehicle));
     csvRows = csvRows.filter(r=>{
       const dv = r[dateCol];
       if(!dv) return true;
@@ -1319,11 +1351,13 @@ const vehicleCol = findCol(csvHeaders, ['vehicle','car']);
       if(isNaN(d)) return true;
       const m = d.toISOString().slice(0,7);
       const veh = vehicleCol ? (r[vehicleCol]||'Unknown') : 'All';
-      return !(m===g.month && veh===g.vehicle);
+      return !addedKeys.has(m+'|'+veh);
     });
-    alert('Added '+fmtMoney(g.total)+' for '+g.vehicle+' ('+g.month+') as a profit entry.');
+    csvUnchecked = new Set();
+    await save('profit');
+    showToast('Added '+toAdd.length+' Turo import'+(toAdd.length!==1?'s':'')+' as profit entries.');
     render();
-  });
+  };
 
   const toggleExpenseCsvBtn = document.getElementById('toggle-expense-csv-form');
   if(toggleExpenseCsvBtn) toggleExpenseCsvBtn.onclick = () => {
@@ -1363,7 +1397,7 @@ const vehicleCol = findCol(csvHeaders, ['vehicle','car']);
     }
     expenseCsvRows = null; expenseCsvHeaders = null; expenseCsvPreview = null;
     await save('profit');
-    alert('Added '+toAdd.length+' expense'+(toAdd.length!==1?'s':'')+' as profit entries.');
+    showToast('Added '+toAdd.length+' expense'+(toAdd.length!==1?'s':'')+' as profit entries.');
     render();
   };
 
