@@ -1355,7 +1355,7 @@ function attachHandlers(){
     });
     csvUnchecked = new Set();
     await save('profit');
-    showToast('Added '+toAdd.length+' Turo import'+(toAdd.length!==1?'s':'')+' as profit entries.');
+    showToast('Added '+toAdd.length+' Turo import'+(toAdd.length!==1?'s':'')+' as profit '+(toAdd.length!==1?'entries':'entry')+'.');
     render();
   };
 
@@ -1397,7 +1397,7 @@ function attachHandlers(){
     }
     expenseCsvRows = null; expenseCsvHeaders = null; expenseCsvPreview = null;
     await save('profit');
-    showToast('Added '+toAdd.length+' expense'+(toAdd.length!==1?'s':'')+' as profit entries.');
+    showToast('Added '+toAdd.length+' expense'+(toAdd.length!==1?'s':'')+' as profit '+(toAdd.length!==1?'entries':'entry')+'.');
     render();
   };
 
