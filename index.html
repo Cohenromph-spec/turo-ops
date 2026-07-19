@@ -1346,7 +1346,7 @@ function attachHandlers(){
     await save('maintenance'); await save('vehicles'); render();
   };
 
-  const saveCohost = document.getElementById('save-cohost');
+  const cVehicleSel = document.getElementById('c-vehicle'); const cMonthInput = document.getElementById('c-month'); const autoFillCohostFromProfit = () => { const vId = cVehicleSel ? cVehicleSel.value : ''; const mo = cMonthInput ? cMonthInput.value : ''; if(!vId || !mo) return; const matches = state.profit.filter(r=>r.vehicleId===vId && (r.date||'').slice(0,7)===mo); const rev = matches.reduce((s,r)=>s+(r.revenue||0),0); const exp = matches.reduce((s,r)=>s+(r.expenses||0),0); const revInput = document.getElementById('c-revenue'); const expInput = document.getElementById('c-expenses'); if(revInput) revInput.value = rev.toFixed(2); if(expInput) expInput.value = exp.toFixed(2); }; if(cVehicleSel) cVehicleSel.onchange = autoFillCohostFromProfit; if(cMonthInput) cMonthInput.onchange = autoFillCohostFromProfit; const saveCohost = document.getElementById('save-cohost');
   if(saveCohost) saveCohost.onclick = async () => {
     const month = document.getElementById('c-month').value;
     if(!month) return;
