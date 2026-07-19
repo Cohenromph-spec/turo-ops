@@ -124,7 +124,7 @@ const TABS = [
   {id:'fleet', label:'Fleet financials'},
   {id:'info', label:'Info'}
 ];
-let state = { vehicles: [], maintenance: [], cohostFin: [], fleetFin: [], profit: [], recurring: [] };
+let state = { vehicles: [], maintenance: [], cohostFin: [], fleetFin: [], profit: [], recurring: [], cohosts: [] };
 let activeTab = 'upcoming';
 let selectedVehicleId = null;
 let editingMaintId = null;
@@ -253,7 +253,7 @@ function intervalFor(v, type){
    ============================================================================ */
 
 const LS_PREFIX = 'turo-ops:';
-const DATA_KEYS = ['vehicles','maintenance','cohostFin','fleetFin','profit','recurring'];
+const DATA_KEYS = ['vehicles','maintenance','cohostFin','fleetFin','profit','recurring','cohosts'];
 
 const hasCloudConfig = !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey && !String(window.FIREBASE_CONFIG.apiKey).startsWith('REPLACE_WITH'));
 let db = null;
@@ -1044,7 +1044,7 @@ const revenueRows = rows.filter(r=>r.revenue>0); const categoryRows = {};
 function renderCohost(){
   const rows = state.cohostFin.sort((a,b)=>b.month.localeCompare(a.month));
   const editingCohost = editingCohostId ? rows.find(r=>r.id===editingCohostId) : null;
-  const cohostNames = [...new Set(state.cohostFin.map(r=>r.cohostName).filter(Boolean))];
+  const cohostNames = [...new Set(state.cohostFin.map(r=>r.cohostName).filter(Boolean))]; const cohostRosterCardHtml = `<h3>Cohost roster <button class="section-btn" id="toggle-cohost-roster-form">+ add</button></h3><div class="toggle-form" id="cohost-roster-form"><label class="field">Name</label><input type="text" id="cr-name" placeholder="e.g. Jordan"><button class="primary" id="save-cohost-roster">Save cohost</button></div>${state.cohosts.length ? state.cohosts.map(c=>`<div class="row"><span class="label">${c.name}</span><button class="danger" data-del-cohost-roster="${c.id}">Remove</button></div>`).join('') : `<div style="font-size:12px;color:var(--text-faint);">No cohosts added yet - add one, then pick them from the dropdown below.</div>`}`;
   const vehicleName = id => (state.vehicles.find(v=>v.id===id)||{}).name || '—';
   const paidRows = rows.filter(r=>r.paid).sort((a,b)=>(b.paidDate||'').localeCompare(a.paidDate||''));
   return `
@@ -1062,10 +1062,10 @@ function renderCohost(){
       ${paidRows.map(r=>`<div class="row"><span class="label">${r.cohostName} · ${r.month}</span><span class="val">${fmtDate(r.paidDate)}</span></div>`).join('')}
     </div>` : ''}
     <div class="card">
-      <h3>${editingCohost?'Edit month':'Add month'} <button class="section-btn" id="toggle-cohost-form">${editingCohost?'cancel':'+ add'}</button></h3>
+      ${cohostRosterCardHtml}</div><div class="card"><h3>${editingCohost?'Edit month':'Add month'} <button class="section-btn" id="toggle-cohost-form">${editingCohost?'cancel':'+ add'}</button></h3>
       <div class="toggle-form ${editingCohost?'open':''}" id="cohost-form">
         <label class="field">Cohost name</label>
-        <input type="text" id="c-name" placeholder="e.g. cohost name" value="${editingCohost?editingCohost.cohostName||'':''}">
+        <select id="c-name"><option value="">Select a cohost</option>${state.cohosts.map(c=>`<option value="${c.name}" ${editingCohost&&editingCohost.cohostName===c.name?'selected':''}>${c.name}</option>`).join('')}${editingCohost && editingCohost.cohostName && !state.cohosts.some(c=>c.name===editingCohost.cohostName) ? `<option value="${editingCohost.cohostName}" selected>${editingCohost.cohostName} (legacy)</option>` : ''}</select>
         <label class="field">Vehicle</label>
         <select id="c-vehicle">
           <option value="">All / not vehicle-specific</option>
