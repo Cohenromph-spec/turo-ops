@@ -914,7 +914,7 @@ function renderProfit(){
     return s + net*((veh.cohostSplit||40)/100);
   },0);
   const netProfitAfterCohost = netProfit - cohostShareOwed;
-const categoryRows = {};
+const revenueRows = rows.filter(r=>r.revenue>0); const categoryRows = {};
   for(const cat of EXPENSE_CATEGORIES) categoryRows[cat] = [];
   for(const r of rows){
     if(!(r.expenses > 0)) continue;
@@ -968,7 +968,7 @@ const categoryRows = {};
         return `<div class="row"><span class="label">${vid==='none'?'Unassigned':vehicleName(vid)}</span><span class="val">${fmtMoney(net)} net</span></div>${cohostRow}`;
       }).join('')}
     </div>` : ''}
-    ${EXPENSE_CATEGORIES.map(cat=>{
+    ${revenueRows.length ? `<div class="card"><h3 class="collapse-toggle" data-collapse="profit-revenue"><span>Revenue entries</span> <span>${fmtMoney(revenueRows.reduce((s,r)=>s+(r.revenue||0),0))}</span></h3>${collapsedVehicles.has('profit-revenue') ? revenueRows.map(entryCard).join('') : ''}</div>` : ''}${EXPENSE_CATEGORIES.map(cat=>{
     const list = categoryRows[cat] || [];
       const total = list.reduce((s,r)=>s+(r.expenses||0),0);
       const hasEntries = list.length > 0;
