@@ -1303,12 +1303,24 @@ function attachHandlers(){
     render();
   };
   document.querySelectorAll('[data-csv-add]').forEach(b=>b.onclick=async()=>{
-    const summary = csvToMonthlySummary(csvHeaders, csvRows);
+b.disabled = true;
+  const summary = csvToMonthlySummary(csvHeaders, csvRows);
     const g = summary[Number(b.dataset.csvAdd)];
     if(!g) return;
     const matchedVehicle = state.vehicles.find(v=>v.name.toLowerCase()===g.vehicle.toLowerCase());
     state.profit.push({ id:uid(), date:g.month+'-01', label:'Turo import: '+g.vehicle, vehicleId:matchedVehicle?matchedVehicle.id:null, revenue:g.total, expenses:0, category:'other' });
     await save('profit');
+const vehicleCol = findCol(csvHeaders, ['vehicle','car']);
+    const dateCol = findCol(csvHeaders, ['start date','trip date','date']);
+    csvRows = csvRows.filter(r=>{
+      const dv = r[dateCol];
+      if(!dv) return true;
+      const d = new Date(dv);
+      if(isNaN(d)) return true;
+      const m = d.toISOString().slice(0,7);
+      const veh = vehicleCol ? (r[vehicleCol]||'Unknown') : 'All';
+      return !(m===g.month && veh===g.vehicle);
+    });
     alert('Added '+fmtMoney(g.total)+' for '+g.vehicle+' ('+g.month+') as a profit entry.');
     render();
   });
