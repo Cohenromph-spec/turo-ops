@@ -486,7 +486,7 @@ function guessExpenseCategory(desc){
   }
   return 'payroll';
 }
-const NON_EXPENSE_KEYWORDS = ['payment received','autopay','auto-pay','thank you','online payment','ach payment','card payment','mobile payment','deposit','transfer to','transfer from','direct deposit','refund','credit balance','cash back redemption'];
+const NON_EXPENSE_KEYWORDS = ['payment received','autopay','auto-pay','thank you','online payment','ach payment','card payment','mobile payment','deposit','transfer to','transfer from','direct deposit','refund','credit balance','cash back redemption','funds transfer'];
 function parseExpenseCSV(headers, rows){
   const dateCol = findCol(headers, ['transaction date','trans date','posted date','post date','date']);
   const descCol = findCol(headers, ['description','merchant','payee','memo','name','transaction']);
