@@ -821,6 +821,7 @@ function renderProfit(){
     byCategory[cat] = (byCategory[cat]||0) + (r.expenses||0);
   }
 
+  const entriesExpanded = collapsedVehicles.has('profit-entries-expanded');
   const csvPreview = csvRows ? csvToMonthlySummary(csvHeaders, csvRows) : null;
 
   return `
@@ -901,7 +902,10 @@ function renderProfit(){
         <button class="primary" id="save-profit">${editing?'Save changes':'Save entry'}</button>
       </div>
     </div>
-    ${rows.map(r=>{
+${rows.length ? `<div class="card">
+               <h3 class="collapse-toggle" data-collapse="profit-entries-expanded">${entriesExpanded ? 'Hide entries' : `Show all entries (${rows.length})`}</h3>
+                   </div>` : ''}
+                   ${entriesExpanded ? rows.map(r=>{
       const net = (r.revenue||0)-(r.expenses||0);
       return `
       <div class="card">
@@ -915,7 +919,7 @@ function renderProfit(){
           <div class="metric"><div class="m-label">Net</div><div class="m-val ${net>=0?'pos':'neg'}">${fmtMoney(net)}</div></div>
         </div>
       </div>`;
-    }).join('')}
+    }).join('') : ''}
     ${!rows.length ? `<div class="empty">No entries yet. Add what you made and what it cost you.</div>` : ''}
   `;
 }
