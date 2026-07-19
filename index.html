@@ -463,7 +463,7 @@ function guessExpenseCategory(desc){
   for(const cat of Object.keys(EXPENSE_CATEGORY_KEYWORDS)){
     if(EXPENSE_CATEGORY_KEYWORDS[cat].some(kw=>d.includes(kw))) return cat;
   }
-  return 'other';
+  return 'payroll';
 }
 const NON_EXPENSE_KEYWORDS = ['payment received','autopay','auto-pay','thank you','online payment','ach payment','card payment','mobile payment','deposit','transfer to','transfer from','direct deposit','refund','credit balance','cash back redemption'];
 function parseExpenseCSV(headers, rows){
