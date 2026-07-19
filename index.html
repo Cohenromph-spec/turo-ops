@@ -1533,14 +1533,14 @@ function attachHandlers(){
   if(exportProfitCsv) exportProfitCsv.onclick = () => {
     const vehicleName = id => (state.vehicles.find(v=>v.id===id)||{}).name || '';
     let csv = 'Date,Label,Vehicle,Revenue,Expenses,Category,Net\n';
-    for(const r of state.profit.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''))){
+    const exportRows = profitMonthFilter==='all' ? state.profit.slice() : state.profit.filter(r=>(r.date||'').slice(0,7)===profitMonthFilter); for(const r of exportRows.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''))){
       const net = (r.revenue||0)-(r.expenses||0);
       csv += `${r.date},"${(r.label||'').replace(/"/g,'""')}","${vehicleName(r.vehicleId)}",${r.revenue||0},${r.expenses||0},${r.category||'other'},${net}\n`;
     }
     const blob = new Blob([csv], {type:'text/csv'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'turo-profit-'+new Date().toISOString().slice(0,10)+'.csv';
+    a.href = url; a.download = 'turo-profit-'+(profitMonthFilter==='all'?'all-time':profitMonthFilter)+'.csv';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
