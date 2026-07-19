@@ -131,6 +131,7 @@ let editingCohostId = null;
 let editingFleetId = null;
 let editingVehicleId = null;
 let editingProfitId = null;
+let profitMonthFilter = 'all';
 let collapsedVehicles = new Set();
 let csvRows = null;
 let csvHeaders = null;
@@ -149,6 +150,7 @@ const DEFAULT_INTERVALS = { 'Oil change':{mi:5000,days:120}, 'Tire rotation':{mi
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function fmtMoney(n){ return '$'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); }
+function fmtMonthLabel(m){ if(!m) return ''; const dt=new Date(m+'-01T00:00:00'); return dt.toLocaleDateString(undefined,{month:'long',year:'numeric'}); }
 function showToast(msg){
   toastMsg = msg;
   renderToast();
@@ -828,8 +830,10 @@ function renderVehicles(){
 }
 
 function renderProfit(){
-  const rows = state.profit.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const editing = editingProfitId ? rows.find(r=>r.id===editingProfitId) : null;
+  const allRows = state.profit.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const availableMonths = [...new Set(allRows.map(r=>(r.date||'').slice(0,7)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  const rows = profitMonthFilter==='all' ? allRows : allRows.filter(r=>(r.date||'').slice(0,7)===profitMonthFilter);
+  const editing = editingProfitId ? allRows.find(r=>r.id===editingProfitId) : null;
   const totalRevenue = rows.reduce((s,r)=>s+(r.revenue||0),0);
   const totalExpenses = rows.reduce((s,r)=>s+(r.expenses||0),0);
   const netProfit = totalRevenue - totalExpenses;
@@ -876,6 +880,14 @@ const categoryRows = {};
   const csvPreview = csvRows ? csvToMonthlySummary(csvHeaders, csvRows) : null;
 
   return `
+    <div class="card">
+      <h3>Filter</h3>
+      <label class="field">Month</label>
+      <select id="profit-month-filter">
+        <option value="all" ${profitMonthFilter==='all'?'selected':''}>All time</option>
+        ${availableMonths.map(m=>`<option value="${m}" ${profitMonthFilter===m?'selected':''}>${fmtMonthLabel(m)}</option>`).join('')}
+      </select>
+    </div>
     <div class="card">
       <h3>Overview <button class="danger" id="clear-all-profit-btn" ${!rows.length?'disabled':''}>Clear all entries</button></h3>
       <div class="grid3">
@@ -1315,6 +1327,11 @@ function attachHandlers(){
     state.profit = state.profit.filter(r=>r.id!==b.dataset.delProfit);
     await save('profit'); render();
   });
+  const profitMonthFilterSel = document.getElementById('profit-month-filter');
+  if(profitMonthFilterSel) profitMonthFilterSel.onchange = () => {
+    profitMonthFilter = profitMonthFilterSel.value;
+    render();
+  };
   const clearAllProfitBtn = document.getElementById('clear-all-profit-btn');
   if(clearAllProfitBtn) clearAllProfitBtn.onclick = async () => {
     if(!state.profit.length) return;
