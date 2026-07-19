@@ -176,7 +176,7 @@ vehicles: `
                         <li>Custom maintenance intervals let you override the app's built-in defaults for that specific vehicle - enter miles and/or days for any service type, and leave a field blank to keep using the default for that type.</li>
                               <li>Cohost vehicle marks this vehicle as one you split profit on with someone else, and sets the split percentage. This is what feeds the automatic "Cohost share owed" numbers on the Profit tab - it's separate from the manual Cohost financials tab (see that tab's note for the difference).</li>
                                   </ul>
-                                      <p>Each vehicle's card shows its VIN, current mileage, Turo listing, and lifetime maintenance spend (every service ever logged for it, added up). The "update mileage" box at the bottom of each card is a shortcut to bump the odometer reading without opening the edit form.</p>
+                                      <p>Each vehicle's card shows its VIN, current mileage, Turo listing, and lifetime maintenance spend (every service ever logged for it, added up). The "update mileage" box at the bottom of each card is a shortcut to bump the odometer reading without opening the edit form.</p><p><strong>Known issues</strong> is a running list of things that need attention on that vehicle (e.g. "guest reported squeaky brakes") - add one with the input at the bottom of the card, and tap resolve once it's handled. Vehicles with open issues show an issue-count chip on the Upcoming tab.</p>
                                         `,
     profit: `
         <p>This is the full financial picture for your fleet: money in, money out, and what's left - with an optional cohost split factored in.</p>
@@ -1228,7 +1228,7 @@ function attachHandlers(){
       if(idx>-1) state.vehicles[idx] = {...state.vehicles[idx], ...record};
       editingVehicleId = null;
     } else {
-      state.vehicles.push({ id:uid(), ...record });
+      state.vehicles.push({ id:uid(), issues: [], ...record });
     }
     await save('vehicles'); render();
   };
@@ -1243,7 +1243,7 @@ function attachHandlers(){
     await save('vehicles'); render();
   });
 
-  const sameAsLast = document.getElementById('same-as-last');
+  document.querySelectorAll('[data-add-issue]').forEach(b=>b.onclick=async()=>{ const id=b.dataset.addIssue; const input=document.getElementById('issue-input-'+id); const text=(input.value||'').trim(); if(!text) return; const v=state.vehicles.find(x=>x.id===id); if(!v) return; if(!v.issues) v.issues=[]; v.issues.push({ id:uid(), text, done:false, dateAdded:new Date().toISOString().slice(0,10) }); await save('vehicles'); render(); }); document.querySelectorAll('[data-resolve-issue]').forEach(b=>b.onclick=async()=>{ const parts=b.dataset.resolveIssue.split('|'); const vid=parts[0]; const iid=parts[1]; const v=state.vehicles.find(x=>x.id===vid); if(!v||!v.issues) return; v.issues=v.issues.filter(i=>i.id!==iid); await save('vehicles'); render(); }); const sameAsLast = document.getElementById('same-as-last');
   if(sameAsLast) sameAsLast.onclick = () => {
     const logs = state.maintenance.filter(m=>m.vehicleId===selectedVehicleId).sort((a,b)=>new Date(b.date)-new Date(a.date));
     const last = logs[0];
