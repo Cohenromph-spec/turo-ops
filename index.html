@@ -1252,7 +1252,7 @@ function attachHandlers(){
     if(editingCohostId){ editingCohostId = null; render(); }
     else document.getElementById('cohost-form').classList.toggle('open');
   };
-  const toggleFleetBtn = document.getElementById('toggle-fleet-form');
+  const toggleCohostRosterBtn = document.getElementById('toggle-cohost-roster-form'); if(toggleCohostRosterBtn) toggleCohostRosterBtn.onclick = () => { document.getElementById('cohost-roster-form').classList.toggle('open'); }; const saveCohostRosterBtn = document.getElementById('save-cohost-roster'); if(saveCohostRosterBtn) saveCohostRosterBtn.onclick = async () => { const crNameInput = document.getElementById('cr-name'); const crName = (crNameInput.value||'').trim(); if(!crName) return; state.cohosts.push({ id: uid(), name: crName }); await save('cohosts'); render(); }; document.querySelectorAll('[data-del-cohost-roster]').forEach(b=>b.onclick=async()=>{ state.cohosts = state.cohosts.filter(c=>c.id!==b.dataset.delCohostRoster); await save('cohosts'); render(); }); const toggleFleetBtn = document.getElementById('toggle-fleet-form');
   if(toggleFleetBtn) toggleFleetBtn.onclick = () => {
     if(editingFleetId){ editingFleetId = null; render(); }
     else document.getElementById('fleet-form').classList.toggle('open');
