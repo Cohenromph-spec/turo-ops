@@ -879,10 +879,7 @@ function renderVehicles(){
         <label class="field" style="margin-top:8px;">Update mileage</label>
         <div style="display:flex;gap:8px;">
           <input type="number" id="update-mi-${v.id}" placeholder="new mileage" style="margin-bottom:0;">
-          <button class="ghost" data-update-mi="${v.id}" style="flex:0 0 auto;">Save</button>
-        </div>
-      </div>
-    `).join('')}
+          <button class="ghost" data-update-mi="${v.id}" style="flex:0 0 auto;">Save</button></div><div class="issues-section" style="margin-top:10px;"><label class="field">Known issues</label><div style="display:flex;gap:8px;"><input type="text" id="issue-input-${v.id}" placeholder="e.g. guest reported squeaky brakes" style="margin-bottom:0;"><button class="ghost" data-add-issue="${v.id}" style="flex:0 0 auto;">Add</button></div>${(v.issues&&v.issues.length) ? v.issues.map(i=>`<div class="row"><span class="label">${i.text}</span><button class="section-btn" data-resolve-issue="${v.id}|${i.id}">resolve</button></div>`).join('') : '<div style="font-size:12px;color:var(--text-faint);padding:4px 0;">No open issues.</div>'}</div></div>`).join('')}
     ${!state.vehicles.length ? `<div class="empty">No vehicles yet.</div>` : ''}
   `;
 }
