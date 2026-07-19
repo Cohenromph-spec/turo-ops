@@ -815,13 +815,29 @@ function renderProfit(){
     byVehicle[key].revenue += r.revenue||0;
     byVehicle[key].expenses += r.expenses||0;
   }
-  const byCategory = {};
+const categoryRows = {};
+  for(const cat of EXPENSE_CATEGORIES) categoryRows[cat] = [];
   for(const r of rows){
+    if(!(r.expenses > 0)) continue;
     const cat = r.category || 'other';
-    byCategory[cat] = (byCategory[cat]||0) + (r.expenses||0);
+    if(!categoryRows[cat]) categoryRows[cat] = [];
+    categoryRows[cat].push(r);
   }
-
-  const entriesExpanded = collapsedVehicles.has('profit-entries-expanded');
+  const entryCard = r => {
+    const net = (r.revenue||0)-(r.expenses||0);
+    return `
+    <div class="card">
+    <h3>${r.label||fmtDate(r.date)} <span><button class="section-btn" data-edit-profit="${r.id}" style="margin-right:12px;">edit</button><button class="danger" data-del-profit="${r.id}">Remove</button></span></h3>
+    <div class="row"><span class="label">Date</span><span class="val">${fmtDate(r.date)}</span></div>
+    <div class="row"><span class="label">Vehicle</span><span class="val">${r.vehicleId?vehicleName(r.vehicleId):'Unassigned'}</span></div>
+    ${r.expenses ? `<div class="row"><span class="label">Category</span><span class="val" style="text-transform:capitalize;">${r.category||'other'}</span></div>` : ''}
+    <div class="grid3">
+    <div class="metric"><div class="m-label">Revenue</div><div class="m-val">${fmtMoney(r.revenue)}</div></div>
+    <div class="metric"><div class="m-label">Expenses</div><div class="m-val">${fmtMoney(r.expenses)}</div></div>
+    <div class="metric"><div class="m-label">Net</div><div class="m-val ${net>=0?'pos':'neg'}">${fmtMoney(net)}</div></div>
+    </div>
+    </div>`;
+  };
   const csvPreview = csvRows ? csvToMonthlySummary(csvHeaders, csvRows) : null;
 
   return `
@@ -840,13 +856,17 @@ function renderProfit(){
         <div class="row"><span class="label">${vid==='none'?'Unassigned':vehicleName(vid)}</span><span class="val">${fmtMoney(d.revenue-d.expenses)} net</span></div>
       `).join('')}
     </div>` : ''}
-    ${Object.keys(byCategory).length ? `
-    <div class="card">
-      <h3>Expenses by category</h3>
-      ${Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`
-        <div class="row"><span class="label" style="text-transform:capitalize;">${cat}</span><span class="val">${fmtMoney(amt)}</span></div>
-      `).join('')}
-    </div>` : ''}
+    ${EXPENSE_CATEGORIES.map(cat=>{
+    const list = categoryRows[cat] || [];
+      const total = list.reduce((s,r)=>s+(r.expenses||0),0);
+      const hasEntries = list.length > 0;
+      const expanded = hasEntries && collapsedVehicles.has('profit-cat-'+cat);
+      return `
+      <div class="card">
+      <h3 class="${hasEntries?'collapse-toggle':''}" ${hasEntries?`data-collapse="profit-cat-${cat}"`:''}><span style="text-transform:capitalize;">${cat}</span> <span>${fmtMoney(total)}</span></h3>
+      ${expanded ? list.map(entryCard).join('') : ''}
+      </div>`;
+    }).join('')}
     <div class="card">
       <h3>Recurring expenses <button class="section-btn" id="toggle-recurring-form">+ add</button></h3>
       <div class="toggle-form" id="recurring-form">
@@ -902,24 +922,7 @@ function renderProfit(){
         <button class="primary" id="save-profit">${editing?'Save changes':'Save entry'}</button>
       </div>
     </div>
-${rows.length ? `<div class="card">
-               <h3 class="collapse-toggle" data-collapse="profit-entries-expanded">${entriesExpanded ? 'Hide entries' : `Show all entries (${rows.length})`}</h3>
-                   </div>` : ''}
-                   ${entriesExpanded ? rows.map(r=>{
-      const net = (r.revenue||0)-(r.expenses||0);
-      return `
-      <div class="card">
-        <h3>${r.label||fmtDate(r.date)} <span><button class="section-btn" data-edit-profit="${r.id}" style="margin-right:12px;">edit</button><button class="danger" data-del-profit="${r.id}">Remove</button></span></h3>
-        <div class="row"><span class="label">Date</span><span class="val">${fmtDate(r.date)}</span></div>
-        <div class="row"><span class="label">Vehicle</span><span class="val">${r.vehicleId?vehicleName(r.vehicleId):'Unassigned'}</span></div>
-        ${r.expenses ? `<div class="row"><span class="label">Category</span><span class="val" style="text-transform:capitalize;">${r.category||'other'}</span></div>` : ''}
-        <div class="grid3">
-          <div class="metric"><div class="m-label">Revenue</div><div class="m-val">${fmtMoney(r.revenue)}</div></div>
-          <div class="metric"><div class="m-label">Expenses</div><div class="m-val">${fmtMoney(r.expenses)}</div></div>
-          <div class="metric"><div class="m-label">Net</div><div class="m-val ${net>=0?'pos':'neg'}">${fmtMoney(net)}</div></div>
-        </div>
-      </div>`;
-    }).join('') : ''}
+
     ${!rows.length ? `<div class="empty">No entries yet. Add what you made and what it cost you.</div>` : ''}
   `;
 }
