@@ -863,7 +863,7 @@ const categoryRows = {};
 
   return `
     <div class="card">
-      <h3>Overview</h3>
+      <h3>Overview <button class="danger" id="clear-all-profit-btn" ${!rows.length?'disabled':''}>Clear all entries</button></h3>
       <div class="grid3">
         <div class="metric"><div class="m-label">Total revenue</div><div class="m-val">${fmtMoney(totalRevenue)}</div></div>
         <div class="metric"><div class="m-label">Total expenses</div><div class="m-val">${fmtMoney(totalExpenses)}</div></div>
@@ -1289,6 +1289,15 @@ function attachHandlers(){
     state.profit = state.profit.filter(r=>r.id!==b.dataset.delProfit);
     await save('profit'); render();
   });
+  const clearAllProfitBtn = document.getElementById('clear-all-profit-btn');
+  if(clearAllProfitBtn) clearAllProfitBtn.onclick = async () => {
+    if(!state.profit.length) return;
+    if(!confirm('Delete all '+state.profit.length+' profit entries? This cannot be undone.')) return;
+    state.profit = [];
+    await save('profit');
+    showToast('Cleared all profit entries.');
+    render();
+  };
 
   const toggleRecurringBtn = document.getElementById('toggle-recurring-form');
   if(toggleRecurringBtn) toggleRecurringBtn.onclick = () => document.getElementById('recurring-form').classList.toggle('open');
