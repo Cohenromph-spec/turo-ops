@@ -352,27 +352,67 @@ function fleetDueDates(){
   return items.sort((a,b)=>a.date.localeCompare(b.date));
 }
 function parseCSV(text){
-  const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
-  if(!lines.length) return {headers:[], rows:[]};
-  const parseLine = (line) => {
-    const out = []; let cur=''; let inQ=false;
-    for(let i=0;i<line.length;i++){
-      const c = line[i];
-      if(c==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ; }
-      else if(c===',' && !inQ){ out.push(cur); cur=''; }
-      else cur+=c;
+  // Quote-aware CSV parser. Walks the raw text character-by-character and
+  // only treats a newline as a row separator when it's OUTSIDE a quoted
+  // field. This matters for real-world exports like Turo's own CSV, whose
+  // "Type" column can contain a literal embedded newline inside quotes
+  // (e.g. `"Sam's trip\n"`) — splitting on \r?\n up front (the old approach)
+  // chops that single logical row into two, shifting every field after it.
+  const rows = [];
+  let row = [];
+  let cur = '';
+  let inQ = false;
+  let i = 0;
+  const len = text.length;
+  while(i < len){
+    const c = text[i];
+    if(inQ){
+      if(c === '"'){
+        if(text[i+1] === '"'){ cur += '"'; i += 2; continue; }
+        inQ = false; i++; continue;
+      }
+      cur += c; i++; continue;
+    } else {
+      if(c === '"'){ inQ = true; i++; continue; }
+      if(c === ','){ row.push(cur); cur=''; i++; continue; }
+      if(c === '\r'){ i++; continue; }
+      if(c === '\n'){ row.push(cur); cur=''; rows.push(row); row=[]; i++; continue; }
+      cur += c; i++; continue;
     }
-    out.push(cur);
-    return out.map(s=>s.trim());
-  };
-  const headers = parseLine(lines[0]);
-  const rows = lines.slice(1).map(l=>{
-    const cells = parseLine(l);
+  }
+  // Last field/row (file may or may not end with a trailing newline).
+  if(cur !== '' || row.length){ row.push(cur); rows.push(row); }
+
+  const cleaned = rows
+    .map(r => r.map(s => s.trim()))
+    .filter(r => !(r.length===1 && r[0]===''));
+  if(!cleaned.length) return {headers:[], rows:[]};
+
+  const headers = cleaned[0];
+  const dataRows = cleaned.slice(1).map(cells=>{
     const obj = {};
     headers.forEach((h,i)=>obj[h]=cells[i]||'');
     return obj;
   });
-  return {headers, rows};
+  return {headers, rows: dataRows};
+}
+// Parses a currency-ish string into a number. Handles a leading/trailing
+// currency symbol and, importantly, Turo's (and many bank statements')
+// accounting-style parentheses for negative amounts, e.g. "($124.20)" for
+// a refund/adjustment or "($100.00)" for a "Host no show fee" line item —
+// naively stripping non-numeric characters loses the parens and silently
+// turns these positive.
+function parseMoney(str){
+  if(str == null) return NaN;
+  const s = String(str).trim();
+  if(!s) return NaN;
+  const isParenNegative = /^\(.*\)$/.test(s);
+  const cleaned = s.replace(/[()]/g,'').replace(/[^0-9.\-]/g,'');
+  if(cleaned === '' || cleaned === '-' || cleaned === '.') return NaN;
+  let n = parseFloat(cleaned);
+  if(isNaN(n)) return NaN;
+  if(isParenNegative && n > 0) n = -n;
+  return n;
 }
 function findCol(headers, keywords){
   const lower = headers.map(h=>h.toLowerCase());
@@ -395,7 +435,7 @@ function csvToMonthlySummary(headers, rows){
     if(isNaN(d)) continue;
     const month = d.toISOString().slice(0,7);
     const vehicle = vehicleCol ? (r[vehicleCol]||'Unknown') : 'All';
-    const amt = parseFloat((r[earningsCol]||'0').replace(/[^0-9.\-]/g,''))||0;
+    const amt = parseMoney(r[earningsCol])||0;
     const key = month+'|'+vehicle;
     if(!groups[key]) groups[key] = {month, vehicle, total:0, count:0};
     groups[key].total += amt;
@@ -441,9 +481,9 @@ function parseExpenseCSV(headers, rows){
     if(isNaN(d)) continue;
     const desc = descCol ? (r[descCol]||'').trim() : '';
 
-    const debitVal = debitCol ? parseFloat((r[debitCol]||'').replace(/[^0-9.\-]/g,'')) : NaN;
-    const creditVal = creditCol ? parseFloat((r[creditCol]||'').replace(/[^0-9.\-]/g,'')) : NaN;
-    const genericVal = amountCol ? parseFloat((r[amountCol]||'').replace(/[^0-9.\-]/g,'')) : NaN;
+    const debitVal = debitCol ? parseMoney(r[debitCol]) : NaN;
+    const creditVal = creditCol ? parseMoney(r[creditCol]) : NaN;
+    const genericVal = amountCol ? parseMoney(r[amountCol]) : NaN;
 
     let amount = 0;
     let looksLikeCredit = false;
