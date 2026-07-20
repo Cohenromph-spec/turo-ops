@@ -425,7 +425,7 @@ function expiryStatus(dateStr){
 function fleetDueDates(){
   const items = [];
   for(const v of state.vehicles){
-    const due = nextDue(v).filter(d=>d.type==='Registration'||d.type==='Inspection');
+    const due = nextDue(v).filter(d=>d.type==='Registration'||d.type==='Inspection'||d.status==='soon'||d.status==='overdue');
     for(const d of due){ if(d.dueDate) items.push({vehicle:v.name, label:d.type, date:d.dueDate, status:d.status}); }
     if(v.warrantyExpiration) items.push({vehicle:v.name, label:'Warranty expires', date:v.warrantyExpiration, status:expiryStatus(v.warrantyExpiration)||'ok'});
     if(v.insuranceRenewal) items.push({vehicle:v.name, label:'Insurance renewal', date:v.insuranceRenewal, status:expiryStatus(v.insuranceRenewal)||'ok'});
@@ -817,7 +817,7 @@ function renderMaintenance(){
       <h3>History</h3>
       ${logs.length ? logs.map(l=>`
         <div class="hist-item">
-          <div class="hist-top"><span>${l.type}</span><span style="display:flex;align-items:center;gap:10px;"><span class="val">${fmtMoney(l.cost)}</span><button class="section-btn" data-edit-maint="${l.id}">edit</button></span></div>
+          <div class="hist-top"><span>${l.type}</span><span style="display:flex;align-items:center;gap:10px;"><span class="val">${fmtMoney(l.cost)}</span><button class="section-btn" data-edit-maint="${l.id}">edit</button><button class="danger" data-del-maint="${l.id}">Remove</button></span></div>
           <div class="hist-meta">${fmtDate(l.date)} · ${l.mileage.toLocaleString()} mi ${l.shop?'· '+l.shop:''} ${l.notes?'· '+l.notes:''}</div>
         </div>
       `).join('') : `<div class="empty">No service logged yet for this vehicle.</div>`}
@@ -1252,6 +1252,11 @@ function attachHandlers(){
   };
   document.querySelectorAll('[data-edit-maint]').forEach(b=>b.onclick=()=>{
     editingMaintId = b.dataset.editMaint; render();
+  });
+  document.querySelectorAll('[data-del-maint]').forEach(b=>b.onclick=async()=>{
+    state.maintenance = state.maintenance.filter(m=>m.id!==b.dataset.delMaint);
+    if(editingMaintId===b.dataset.delMaint) editingMaintId = null;
+    await save('maintenance'); render();
   });
 
   const saveMaint = document.getElementById('save-maint');
